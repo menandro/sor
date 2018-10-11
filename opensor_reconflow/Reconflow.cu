@@ -362,9 +362,9 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 			for (int iter = 0; iter < nSolverIters; ++iter)
 			{
 				// Remove dependence on the sparse matching at the final level (refinement mode)
-				if ((level == 0) && (iter > 0.1*nSolverIters)) {
+				/*if ((level == 0) && (iter > 0.1*nSolverIters)) {
 					alphaFn = 0.0f;
-				}
+				}*/
 
 				// Solve du
 				if (method == METHODR_TVL1_MS) {
@@ -487,7 +487,6 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 				Swap(d_X, d_Xs);
 				Swap(d_Y, d_Ys);
 				Swap(d_Z, d_Zs);
-				//Median filter the 3D
 
 				//Swap(d_dumed, d_dumeds, d_dvmed, d_dvmeds);
 

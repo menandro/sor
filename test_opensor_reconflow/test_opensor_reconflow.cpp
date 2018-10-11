@@ -256,13 +256,13 @@ int test_sparseLidar() {
 	lambda = 50.0f;//50
 	tau = 0.125f;
 	alphaTv = 33.3f;//33.3f
-	alphaFn = 1.0f; //100
+	alphaFn = 10.0f; //100
 
 	alphaProj = 2500.0f;//fix to 60 (slight effect) nice:2500.0f
 
-	lambdaf = 0.00000001f;//0.1 (Fdata) //0.00005f //nice:0.0000001f
-	lambdams = 0.001f;//100 (Fms) nice:0.1f
-	lambdasp = 0.01f; //nice 1.0f
+	lambdaf = 0.001f;//0.1 (Fdata) //0.00005f //nice:0.0000001f
+	lambdams = 500.0f;//100 (Fms) nice:0.1f
+	lambdasp = 1000.0f; //nice 1.0f
 
 	nWarpIters = 1;
 	iters = 300;
