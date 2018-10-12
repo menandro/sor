@@ -193,18 +193,21 @@ int solve2d3dPose(cv::Mat im, cv::Mat Xin, cv::Mat Yin, cv::Mat Zin, cv::Mat dep
 		points3d.push_back(cv::Point3f(x3d, y3d, z3d));
 	}
 
-	cv::Mat distCoeffs(4, 1, cv::DataType<double>::type);
+	/*cv::Mat distCoeffs(4, 1, cv::DataType<double>::type);
 	distCoeffs.at<double>(0) = 0;
 	distCoeffs.at<double>(1) = 0;
 	distCoeffs.at<double>(2) = 0;
-	distCoeffs.at<double>(3) = 0;
+	distCoeffs.at<double>(3) = 0;*/
+	cv::Mat distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
 
 	cv::Mat rvec, tvec;
 	cv::solvePnPRansac(points3d, points2d, K, distCoeffs, rvec, t);
 	cv::Rodrigues(rvec, R);
 	std::cout << "rvec: " << R << std::endl;
 	std::cout << "tvec: " << t << std::endl;
-
+	std::cout << "P2D3D size: " << points2d.size() << ":" << points3d.size() << std::endl;
+	std::cout << "t: " << (float)t.at<double>(0) << " " << (float)t.at<double>(1) << " " << (float)t.at<double>(2) << std::endl;
+	std::cout << "rvec: " << (float)rvec.at<double>(0) << " " << (float)rvec.at<double>(1) << " " << (float)rvec.at<double>(2) << std::endl;
 	/*cv::solvePnP(points3d, points2d, K, distCoeffs, rvec, t);
 	cv::Rodrigues(rvec, R);
 	std::cout << "rvec: " << R << std::endl;
