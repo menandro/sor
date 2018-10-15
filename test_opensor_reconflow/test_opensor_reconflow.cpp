@@ -263,9 +263,10 @@ int test_sparseLidar() {
 
 	alphaProj = 2500.0f;//fix to 60 (slight effect) nice:2500.0f
 
-	lambdaf = 0.001f;//0.1 (Fdata) //0.00005f //nice:0.0000001f
-	lambdams = 500.0f;//100 (Fms) nice:0.1f
-	lambdasp = 1000.0f; //nice 1.0f
+	lambdaf = 0.01f;//0.1 (Fdata) //0.00005f //nice:0.0000001f
+	lambdams = 5000.0f;//100 (Fms) nice:0.1f
+	lambdasp = 10.0f; //nice 1.0f
+	//final value f=0.01f, ms=5000, sp=10
 
 	nWarpIters = 1;
 	iters = 300;
@@ -387,7 +388,7 @@ int test_sparseLidar() {
 			float y = Y.at<float>(j, i);
 			float z = Z.at<float>(j, i);
 			//buffer.push_back(cv::Vec3f(x, -y, -z));
-			if (((z <= 80) && (z >= 4))){// && ((x <= 100) && (y > -100)) && ((y <= 100) && (y > -100))) {
+			if (((z <= 80) && (z >= 4)) && ((x <= 100) && (y > -100)) && ((y <= 100) && (y > -100))) {
 				buffer.push_back(cv::Vec3f(x, -y, -z));
 			}
 			else {

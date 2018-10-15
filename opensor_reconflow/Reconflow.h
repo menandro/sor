@@ -168,6 +168,13 @@ namespace sor {
 			float lambdaf, float lambdams, float lambdasp, float *spmask,
 			int w, int h, int s,
 			float *X, float *Y, float *Z);
+		void Solve3dLidarLoop(const float *uproj0, const float *vproj0,
+			const float *X0, const float *Y0, const float *Z0,
+			const float *Xsp, const float *Ysp, const float *Zsp,
+			double *P, double *Q, //camera matrices
+			float lambdaf, float lambdams, float lambdasp, float *spmask,
+			int w, int h, int s,
+			float *X, float *Y, float *Z);
 
 		void SolveUc(const float *X, const float *Y, const float *Z,
 			double *R, double *t, double *K1,

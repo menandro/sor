@@ -442,51 +442,52 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 					lambdaf, alphaProj,
 					d_uproj, d_vproj);
 
+				for (int lidarLoop = 0; lidarLoop < 3; lidarLoop++) {
+					// Solve for X
+					if (false) { //no ms
+						Solve3dMinimalArea(d_uproj, d_vproj,
+							d_X, d_Y, d_Z,
+							P, Q, lambdaf, 0.0f,
+							pW[level], pH[level], pS[level],
+							d_Xs, d_Ys, d_Zs);
+						Swap(d_X, d_Xs);
+						Swap(d_Y, d_Ys);
+						Swap(d_Z, d_Zs);
+					}
 
-				// Solve for X
-				if (false) { //no ms
-					Solve3dMinimalArea(d_uproj, d_vproj,
-						d_X, d_Y, d_Z,
-						P, Q, lambdaf, 0.0f,
+					// 3D constraint with sparse lidar
+					else if ((method == METHODR_TVL1_MS_FNSPARSE_LIDAR) || (method == METHODR_TVL1_MS_FN_LIDAR)) {
+						Solve3dLidar(d_uproj, d_vproj,
+							d_X, d_Y, d_Z,
+							d_Xsp_l, d_Ysp_l, d_Zsp_l,
+							P, Q, lambdaf, lambdams, lambdasp, d_spmask_l,
+							pW[level], pH[level], pS[level],
+							d_Xs, d_Ys, d_Zs);
+						Swap(d_X, d_Xs);
+						Swap(d_Y, d_Ys);
+						Swap(d_Z, d_Zs);
+					}
+
+					else {
+						Solve3dMinimalArea(d_uproj, d_vproj,
+							d_X, d_Y, d_Z,
+							P, Q, lambdaf, lambdams,
+							pW[level], pH[level], pS[level],
+							d_Xs, d_Ys, d_Zs);
+						Swap(d_X, d_Xs);
+						Swap(d_Y, d_Ys);
+						Swap(d_Z, d_Zs);
+					}
+					MedianFilter3D(d_X, d_Y, d_Z,
+						pW[level], pH[level], pS[level],
+						d_Xmed, d_Ymed, d_Zmed, 3);
+					CleanUp3D(d_X, d_Y, d_Z, d_Xmed, d_Ymed, d_Zmed,
 						pW[level], pH[level], pS[level],
 						d_Xs, d_Ys, d_Zs);
 					Swap(d_X, d_Xs);
 					Swap(d_Y, d_Ys);
 					Swap(d_Z, d_Zs);
 				}
-
-				// 3D constraint with sparse lidar
-				else if ((method == METHODR_TVL1_MS_FNSPARSE_LIDAR) || (method == METHODR_TVL1_MS_FN_LIDAR)) {
-					Solve3dLidar(d_uproj, d_vproj,
-						d_X, d_Y, d_Z,
-						d_Xsp_l, d_Ysp_l, d_Zsp_l,
-						P, Q, lambdaf, lambdams, lambdasp, d_spmask_l,
-						pW[level], pH[level], pS[level],
-						d_Xs, d_Ys, d_Zs);
-					Swap(d_X, d_Xs);
-					Swap(d_Y, d_Ys);
-					Swap(d_Z, d_Zs);
-				}
-
-				else {
-					Solve3dMinimalArea(d_uproj, d_vproj,
-						d_X, d_Y, d_Z,
-						P, Q, lambdaf, lambdams,
-						pW[level], pH[level], pS[level],
-						d_Xs, d_Ys, d_Zs);
-					Swap(d_X, d_Xs);
-					Swap(d_Y, d_Ys);
-					Swap(d_Z, d_Zs);
-				}
-				MedianFilter3D(d_X, d_Y, d_Z,
-					pW[level], pH[level], pS[level],
-					d_Xmed, d_Ymed, d_Zmed, 3);
-				CleanUp3D(d_X, d_Y, d_Z, d_Xmed, d_Ymed, d_Zmed,
-					pW[level], pH[level], pS[level],
-					d_Xs, d_Ys, d_Zs);
-				Swap(d_X, d_Xs);
-				Swap(d_Y, d_Ys);
-				Swap(d_Z, d_Zs);
 
 				//Swap(d_dumed, d_dumeds, d_dvmed, d_dvmeds);
 
