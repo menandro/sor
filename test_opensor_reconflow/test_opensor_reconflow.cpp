@@ -104,6 +104,21 @@ void readDepthKitti(std::string filename, cv::Mat &depth, cv::Mat &mask) {
 	//cv::waitKey();
 }
 
+cv::Mat createFlownetMask(cv::Mat im) {
+	cv::Mat mask = cv::Mat::zeros(im.size(), CV_32F) + 0.01f;
+	int height = im.rows;
+	int width = im.cols;
+	int sparse = 4;
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < width; i++) {
+			if (((i % sparse) == 0) && ((j % sparse) == 0)) {
+				mask.at<float>(j, i) = 1.0f;
+			}
+		}
+	}
+	return mask;
+}
+
 void depthTo3d(cv::Mat depth, cv::Mat depthMask, cv::Mat &Xin, cv::Mat &Yin, cv::Mat &Zin, cv::Mat K) {
 	// Convert depth to 3D points
 	Xin = cv::Mat::zeros(depthMask.size(), CV_32F);
@@ -164,6 +179,45 @@ void depthTo3d(cv::Mat depth, cv::Mat depthMask, cv::Mat &Xin, cv::Mat &Yin, cv:
 
 	//cv::imshow("tst", Yin);
 	//cv::waitKey();
+}
+
+void depthToOpticalFlow(cv::Mat depth, cv::Mat depthMask, cv::Mat &u, cv::Mat &v, cv::Mat K, cv::Mat R, cv::Mat t) {
+	// Convert depth to 3D points
+	double centerX = K.at<double>(0, 2);
+	double centerY = K.at<double>(1, 2);
+	double focalX = K.at<double>(0, 0);
+	double focalY = K.at<double>(1, 1);
+	u = cv::Mat::zeros(depth.size(), CV_32F);
+	v = cv::Mat::zeros(depth.size(), CV_32F);
+
+	int nonZeroCnt = 0;
+	for (int j = 0; j < depthMask.rows; j++) {
+		for (int i = 0; i < depthMask.cols; i++) {
+			if (depthMask.at<float>(j, i) == 1.0f) {
+				float Z = depth.at<float>(j, i);
+				float X = (float)(((double)i - centerX) * depth.at<float>(j, i) / focalX);
+				float Y = (float)(((double)j - centerY) * depth.at<float>(j, i) / focalY);
+
+				float X2 = (float)R.at<double>(0, 0)*X + (float)R.at<double>(0, 1)*Y + (float)R.at<double>(0, 2)*Z + (float)t.at<double>(0);
+				float Y2 = (float)R.at<double>(1, 0)*X + (float)R.at<double>(1, 1)*Y + (float)R.at<double>(1, 2)*Z + (float)t.at<double>(1);
+				float Z2 = (float)R.at<double>(2, 0)*X + (float)R.at<double>(2, 1)*Y + (float)R.at<double>(2, 2)*Z + (float)t.at<double>(2);
+
+				float xproj = focalX*X2 / Z2 + centerX;
+				float yproj = focalY*Y2 / Z2 + centerY;
+
+				u.at<float>(j,i) = xproj - (float)i;
+				v.at<float>(j,i) = yproj - (float)j;
+				nonZeroCnt++;
+			}
+		}
+	}
+	//cv::imshow("u", -u);
+	//std::vector<cv::Mat> channelForward;
+	//channelForward.push_back(u);
+	//channelForward.push_back(v);
+	//cv::Mat forward;
+	//cv::merge(channelForward, forward);
+	//cv::optflow::writeOpticalFlow("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/flowfromdepth.flo", forward);
 }
 
 int solve2d3dPose(cv::Mat im, cv::Mat Xin, cv::Mat Yin, cv::Mat Zin, cv::Mat depthMask, cv::Mat flownet,
@@ -239,6 +293,338 @@ int getRtStereo(std::string filename, cv::Mat &R, cv::Mat &t) {
 	double te[3] = { -1, 0.00001, 0.00001 };
 	R = cv::Mat(3, 3, CV_64F, Re).clone();
 	t = cv::Mat(3, 1, CV_64F, te).clone();
+	return 0;
+}
+
+int test_lidarAsOpticalFlowPrior() {
+	std::string itemNo = "0000000006";
+	std::string mainfolder = "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/";
+	std::string im0filename = mainfolder + "image_02/data/" + itemNo + ".png";
+	std::string im1filename = mainfolder + "image_03/data/" + itemNo + ".png";
+	std::string flownetfilename = mainfolder + "flownet_stereo/" + itemNo + ".flo";
+	std::string depthfilename = mainfolder + "proj_depth/velodyne_raw/image_02/" + itemNo + ".png";
+	std::string cameramatrix = "h:/data_kitti_raw/2011_09_26/2011_09_26_calib/2011_09_26/calib_cam_to_cam.txt";
+	std::string outputfilename = mainfolder + "output/output3d";
+	sor::ReconFlow *flow = new sor::ReconFlow(32, 12, 32);
+
+	// Load Params
+	float lambda, tau, alphaTv, alphaFn, alphaProj, lambdaf, lambdams, lambdasp, scale;
+	int nWarpIters, iters, minWidth;
+	std::string suffixFor3D = "oursfn";
+	lambda = 50.0f;//50
+	tau = 0.125f;
+	alphaTv = 33.3f;//33.3f
+	alphaFn = 100.0f; //100
+
+	alphaProj = 0.01f;//fix to 60 (slight effect) nice:2500.0f
+
+	lambdaf = 0.0001f;//0.1 (Fdata) //0.00005f //nice:0.0000001f
+	lambdams = 50.0f;//100 (Fms) nice:0.1f
+	lambdasp = 0.1f; //nice 1.0f
+					  //final value f=0.01f, ms=5000, sp=10
+
+	nWarpIters = 1;
+	iters = 1000;
+	scale = 1.1f;
+	minWidth = 16;
+
+	// Set camera matrices
+	cv::Mat R, t, K;
+	CalibData *calibData = new CalibData();
+	readCalibKitti(cameramatrix, calibData);
+	K = calibData->k02;
+	//int isSetPose = getRtStereo(cameramatrix, R, t);
+
+	// Check image size and compute pyramid nlevels
+	//std::string initialImage = im1filename;
+	cv::Mat iset = cv::imread(im1filename);
+	int width = iset.cols;
+	int height = iset.rows;
+	int nLevels = 1;
+	int pHeight = (int)((float)height / scale);
+	while (pHeight > minWidth) {
+		nLevels++;
+		pHeight = (int)((float)pHeight / scale);
+	}
+	std::cout << "Pyramid Levels: " << nLevels << std::endl;
+	int stride = flow->iAlignUp(width);
+	std::cout << "Stride: " << stride << std::endl;
+	std::cout << "Width: " << width << std::endl;
+	cv::Mat isetpad;
+	cv::copyMakeBorder(iset, isetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+
+	// Initialize handler matrices for display and output
+	cv::Mat uvrgb = cv::Mat(isetpad.size(), CV_32FC3);
+	cv::Mat u = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat v = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat X = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat Y = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat Z = cv::Mat(isetpad.size(), CV_32F);
+
+	// Open input images
+	cv::Mat i0rgb, i1rgb, flownet, i1rgbpad, i0rgbpad, flownetpad, RR, tt;
+	cv::Mat Xin, Yin, Zin, Xinpad, Yinpad, Zinpad, depth, depthMask, depthMaskpad;
+	i0rgb = cv::imread(im0filename);
+	i1rgb = cv::imread(im1filename);
+
+	// Open initial matching (flownet)
+	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	if (flownet.empty()) {
+		std::cerr << "Flownet file not found." << std::endl;
+		return 0;
+	}
+	else std::cout << "Flownet found." << std::endl;
+
+	// Open initial 3D
+	readDepthKitti(depthfilename, depth, depthMask);
+	depthTo3d(depth, depthMask, Xin, Yin, Zin, K);
+
+	// Solve pose from 3d-2d matches
+	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
+	cv::Mat uLidar, vLidar, uLidarpad, vLidarpad;
+	depthToOpticalFlow(depth, depthMask, uLidar, vLidar, K, R, t);
+	cv::copyMakeBorder(uLidar, uLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(vLidar, vLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+
+	// Resize images by padding
+	cv::copyMakeBorder(i0rgb, i0rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(i1rgb, i1rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(flownet, flownetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Xin, Xinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Yin, Yinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Zin, Zinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(depthMask, depthMaskpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::Mat flownet2[2];   //split flownet channels
+	cv::split(flownetpad, flownet2);
+
+	// Initialize ReconFlow
+	flow->initializeR(width, height, 3, nLevels, scale, sor::ReconFlow::METHODR_TVL1_MS_FNSPARSE_LIDAR,
+		lambda, 0.0f, lambdaf, lambdams, lambdasp,
+		alphaTv, alphaProj, alphaFn,
+		tau, nWarpIters, iters);
+	flow->setCameraMatrices(K, K);
+
+	// Copy data to GPU
+	flow->copyImagesToDevice(i0rgbpad, i1rgbpad);
+	//flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1], createFlownetMask(flownet2[0])); //can set a mask as third argument
+	flow->copySparseOpticalFlowToDevice(uLidarpad, vLidarpad, depthMaskpad);
+	flow->copySparse3dToDevice(Xinpad, Yinpad, Zinpad, depthMaskpad);
+
+	// Calculate ReconFlow
+	flow->solveR(R, t, 100.0f); //main computation iteration
+
+							   // Copy GPU results to CPU
+	flow->copyOpticalFlowToHost(u, v, uvrgb); //uvrgb is an optical flow image
+	flow->copy3dToHost(X, Y, Z); //3D points
+
+								 // Save output 3D as ply file
+	std::vector<cv::Vec3b> colorbuffer(stride*height);
+	cv::Mat colorMat = cv::Mat(static_cast<int>(colorbuffer.size()), 1, CV_8UC3, &colorbuffer[0]);
+	std::vector<cv::Vec3f> buffer(stride*height);
+	cv::Mat cloudMat = cv::Mat(static_cast<int>(buffer.size()), 1, CV_32FC3, &buffer[0]);
+	colorbuffer.clear();
+	buffer.clear();
+
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < stride; i++) {
+			cv::Vec3b rgb = i0rgbpad.at<cv::Vec3b>(j, i);
+			colorbuffer.push_back(rgb);
+
+			float x = X.at<float>(j, i);
+			float y = Y.at<float>(j, i);
+			float z = Z.at<float>(j, i);
+			//buffer.push_back(cv::Vec3f(x, -y, -z));
+			if (((z <= 80) && (z >= 4)) && ((x <= 100) && (y > -100)) && ((y <= 100) && (y > -100))) {
+				buffer.push_back(cv::Vec3f(x, -y, -z));
+			}
+			else {
+				x = std::numeric_limits<float>::quiet_NaN();
+				y = std::numeric_limits<float>::quiet_NaN();
+				z = std::numeric_limits<float>::quiet_NaN();
+				buffer.push_back(cv::Vec3f(x, y, z));
+			}
+		}
+	}
+	cv::viz::WCloud cloud(cloudMat, colorMat);
+
+	std::ostringstream output3d;
+	std::cout << outputfilename << suffixFor3D << ".ply";
+	output3d << outputfilename << suffixFor3D << ".ply";
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+
+	cv::imshow("Z", Zin);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 15);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Zin.png", Zin * 15);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/depthMask.png", depthMask);
+	cv::imshow("Zin", Z);
+	cv::imshow("flow", uvrgb);
+	cv::waitKey();
+	return 0;
+}
+
+int test_sparseFlownet() {
+	std::string itemNo = "0000000006";
+	std::string mainfolder = "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/";
+	std::string im0filename = mainfolder + "image_02/data/" + itemNo + ".png";
+	std::string im1filename = mainfolder + "image_03/data/" + itemNo + ".png";
+	std::string flownetfilename = mainfolder + "flownet_stereo/" + itemNo + ".flo";
+	std::string depthfilename = mainfolder + "proj_depth/velodyne_raw/image_02/" + itemNo + ".png";
+	std::string cameramatrix = "h:/data_kitti_raw/2011_09_26/2011_09_26_calib/2011_09_26/calib_cam_to_cam.txt";
+	std::string outputfilename = mainfolder + "output/output3d";
+	sor::ReconFlow *flow = new sor::ReconFlow(32, 12, 32);
+
+	// Load Params
+	float lambda, tau, alphaTv, alphaFn, alphaProj, lambdaf, lambdams, lambdasp, scale;
+	int nWarpIters, iters, minWidth;
+	std::string suffixFor3D = "oursfn";
+	lambda = 50.0f;//50
+	tau = 0.125f;
+	alphaTv = 33.3f;//33.3f
+	alphaFn = 10.0f; //100
+
+	alphaProj = 0.01f;//fix to 60 (slight effect) nice:2500.0f
+
+	lambdaf = 0.0001f;//0.1 (Fdata) //0.00005f //nice:0.0000001f
+	lambdams = 50.0f;//100 (Fms) nice:0.1f
+	lambdasp = 0.1f; //nice 1.0f
+					 //final value f=0.01f, ms=5000, sp=10
+
+	nWarpIters = 1;
+	iters = 1000;
+	scale = 1.5f;
+	minWidth = 16;
+
+	// Set camera matrices
+	cv::Mat R, t, K;
+	CalibData *calibData = new CalibData();
+	readCalibKitti(cameramatrix, calibData);
+	K = calibData->k02;
+	//int isSetPose = getRtStereo(cameramatrix, R, t);
+
+	// Check image size and compute pyramid nlevels
+	//std::string initialImage = im1filename;
+	cv::Mat iset = cv::imread(im1filename);
+	int width = iset.cols;
+	int height = iset.rows;
+	int nLevels = 1;
+	int pHeight = (int)((float)height / scale);
+	while (pHeight > minWidth) {
+		nLevels++;
+		pHeight = (int)((float)pHeight / scale);
+	}
+	std::cout << "Pyramid Levels: " << nLevels << std::endl;
+	int stride = flow->iAlignUp(width);
+	std::cout << "Stride: " << stride << std::endl;
+	std::cout << "Width: " << width << std::endl;
+	cv::Mat isetpad;
+	cv::copyMakeBorder(iset, isetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+
+	// Initialize handler matrices for display and output
+	cv::Mat uvrgb = cv::Mat(isetpad.size(), CV_32FC3);
+	cv::Mat u = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat v = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat X = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat Y = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat Z = cv::Mat(isetpad.size(), CV_32F);
+
+	// Open input images
+	cv::Mat i0rgb, i1rgb, flownet, i1rgbpad, i0rgbpad, flownetpad, RR, tt;
+	cv::Mat Xin, Yin, Zin, Xinpad, Yinpad, Zinpad, depth, depthMask, depthMaskpad;
+	i0rgb = cv::imread(im0filename);
+	i1rgb = cv::imread(im1filename);
+
+	// Open initial matching (flownet)
+	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	if (flownet.empty()) {
+		std::cerr << "Flownet file not found." << std::endl;
+		return 0;
+	}
+	else std::cout << "Flownet found." << std::endl;
+
+	// Open initial 3D
+	readDepthKitti(depthfilename, depth, depthMask);
+	depthTo3d(depth, depthMask, Xin, Yin, Zin, K);
+
+	// Solve pose from 3d-2d matches
+	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
+	cv::Mat uLidar, vLidar, uLidarpad, vLidarpad;
+	depthToOpticalFlow(depth, depthMask, uLidar, vLidar, K, R, t);
+	cv::copyMakeBorder(uLidar, uLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(vLidar, vLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+
+	// Resize images by padding
+	cv::copyMakeBorder(i0rgb, i0rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(i1rgb, i1rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(flownet, flownetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Xin, Xinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Yin, Yinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Zin, Zinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(depthMask, depthMaskpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::Mat flownet2[2];   //split flownet channels
+	cv::split(flownetpad, flownet2);
+
+	// Initialize ReconFlow
+	flow->initializeR(width, height, 3, nLevels, scale, sor::ReconFlow::METHODR_TVL1_MS_FNSPARSE_LIDAR,
+		lambda, 0.0f, lambdaf, lambdams, lambdasp,
+		alphaTv, alphaProj, alphaFn,
+		tau, nWarpIters, iters);
+	flow->setCameraMatrices(K, K);
+
+	// Copy data to GPU
+	flow->copyImagesToDevice(i0rgbpad, i1rgbpad);
+	flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1], createFlownetMask(flownet2[0])); //can set a mask as third argument
+	//flow->copySparseOpticalFlowToDevice(uLidarpad, vLidarpad, depthMaskpad);
+	flow->copySparse3dToDevice(Xinpad, Yinpad, Zinpad, depthMaskpad);
+
+	// Calculate ReconFlow
+	flow->solveR(R, t, 100.0f); //main computation iteration
+
+								// Copy GPU results to CPU
+	flow->copyOpticalFlowToHost(u, v, uvrgb); //uvrgb is an optical flow image
+	flow->copy3dToHost(X, Y, Z); //3D points
+
+								 // Save output 3D as ply file
+	std::vector<cv::Vec3b> colorbuffer(stride*height);
+	cv::Mat colorMat = cv::Mat(static_cast<int>(colorbuffer.size()), 1, CV_8UC3, &colorbuffer[0]);
+	std::vector<cv::Vec3f> buffer(stride*height);
+	cv::Mat cloudMat = cv::Mat(static_cast<int>(buffer.size()), 1, CV_32FC3, &buffer[0]);
+	colorbuffer.clear();
+	buffer.clear();
+
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < stride; i++) {
+			cv::Vec3b rgb = i0rgbpad.at<cv::Vec3b>(j, i);
+			colorbuffer.push_back(rgb);
+
+			float x = X.at<float>(j, i);
+			float y = Y.at<float>(j, i);
+			float z = Z.at<float>(j, i);
+			//buffer.push_back(cv::Vec3f(x, -y, -z));
+			if (((z <= 80) && (z >= 4)) && ((x <= 100) && (y > -100)) && ((y <= 100) && (y > -100))) {
+				buffer.push_back(cv::Vec3f(x, -y, -z));
+			}
+			else {
+				x = std::numeric_limits<float>::quiet_NaN();
+				y = std::numeric_limits<float>::quiet_NaN();
+				z = std::numeric_limits<float>::quiet_NaN();
+				buffer.push_back(cv::Vec3f(x, y, z));
+			}
+		}
+	}
+	cv::viz::WCloud cloud(cloudMat, colorMat);
+
+	std::ostringstream output3d;
+	std::cout << outputfilename << suffixFor3D << ".ply";
+	output3d << outputfilename << suffixFor3D << ".ply";
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+
+	cv::imshow("Z", Zin);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 15);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Zin.png", Zin * 15);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/depthMask.png", depthMask);
+	cv::imshow("Zin", Z);
+	cv::imshow("flow", uvrgb);
+	cv::waitKey();
 	return 0;
 }
 
@@ -414,17 +800,16 @@ int test_sparseLidar() {
 	cv::imshow("flow", uvrgb);
 	cv::waitKey();
 	return 0;
-	return 0;
 }
 
 int test_withoutFlownet() {
 
 	std::string mainfolder = "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/";
-	std::string im0filename = mainfolder + "image_02/data/0000000106.png";
-	std::string im1filename = mainfolder + "image_03/data/0000000106.png";
+	std::string im0filename = mainfolder + "image_02/data/0000000006.png";
+	std::string im1filename = mainfolder + "image_03/data/0000000006.png";
 	//std::string im0filename = "d:/dev/matlab_lab/data/Kitti2012/training/colored_0/000006_11.png";
 	//std::string im1filename = "d:/dev/matlab_lab/data/Kitti2012/training/colored_0/000006_10.png";
-	std::string flownetfilename = mainfolder + "flownet_stereo/0000000106.flo";
+	std::string flownetfilename = mainfolder + "flownet_stereo/0000000006.flo";
 	std::string cameramatrix = "h:/data_kitti_raw/2011_09_26/2011_09_26_calib/2011_09_26/calib_cam_to_cam.txt";
 	std::string outputfilename = mainfolder + "output/output3d";
 	sor::ReconFlow *flow = new sor::ReconFlow(32, 12, 32);
@@ -437,7 +822,7 @@ int test_withoutFlownet() {
 	lambda = 50.0f;//50
 	tau = 0.125f;
 	alphaTv = 33.3f;
-	alphaFn = 100.0f; //100
+	alphaFn = 10.0f; //100
 
 	alphaProj = 0.0f;//fix to 60 (slight effect)
 
@@ -523,7 +908,7 @@ int test_withoutFlownet() {
 
 	// Copy data to GPU
 	flow->copyImagesToDevice(i0rgbpad, i1rgbpad);
-	flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1]); //can set a mask as third argument
+	flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1], createFlownetMask(flownet2[0])); //can set a mask as third argument
 
 																   // Calculate ReconFlow
 	flow->solveR(R, t, 100.0f); //main computation iteration
@@ -769,7 +1154,9 @@ int test_main() {
 int main(int argc, char **argv)
 {
 	if (findCudaDevice(argc, (const char **)argv) == 0) {
-		test_sparseLidar();
+		test_lidarAsOpticalFlowPrior();
+		//test_sparseFlownet();
+		//test_sparseLidar();
 		//test_withoutFlownet();
 		//test_twoFrameOpticalFlow();
 	}

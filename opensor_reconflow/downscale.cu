@@ -27,7 +27,8 @@ __global__ void DownscaleKernel(int width, int height, int stride, float *out)
 	float right = tex2D(texFine, x, y + dy * 0.25f);
 	float here = tex2D(texFine, x, y);
 
-	out[pos] = 0.2f * (here + up + down + left + right);
+	out[pos] = here;
+	//out[pos] = 0.2f * (here + up + down + left + right);
 	//out[pos] = 0.5f * (here + 0.25f*up + 0.25f*down + 0.25f*left + 0.25f*right);
 
 	/*out[pos] = 0.25f * (tex2D(texFine, x - dx * 0.25f, y) + tex2D(texFine, x + dx * 0.25f, y) +
@@ -110,8 +111,9 @@ __global__ void DownscaleScalingKernel(int width, int height, int stride, float 
 
 	int pos = ix + iy * stride;
 
-	out[pos] = scale * 0.25f * (tex2D(texFine, x - dx * 0.25f, y) + tex2D(texFine, x + dx * 0.25f, y) +
-		tex2D(texFine, x, y - dy * 0.25f) + tex2D(texFine, x, y + dy * 0.25f));
+	out[pos] = scale * tex2D(texFine, x, y);
+	/*out[pos] = scale * 0.25f * (tex2D(texFine, x - dx * 0.25f, y) + tex2D(texFine, x + dx * 0.25f, y) +
+		tex2D(texFine, x, y - dy * 0.25f) + tex2D(texFine, x, y + dy * 0.25f));*/
 }
 
 void sor::CudaFlow::Downscale(const float *src, int width, int height, int stride,
@@ -143,7 +145,7 @@ void sor::CudaFlow::DownscaleMask(const float *src, int width, int height, int s
 	// mirror if a coordinate value is out-of-range
 	texFine.addressMode[0] = cudaAddressModeMirror;
 	texFine.addressMode[1] = cudaAddressModeMirror;
-	texFine.filterMode = cudaFilterModeLinear;
+	texFine.filterMode = cudaFilterModePoint;
 	texFine.normalized = true;
 
 	cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();
@@ -183,7 +185,7 @@ void sor::CudaFlow::Downscale(const float *src, int width, int height, int strid
 	// mirror if a coordinate value is out-of-range
 	texFine.addressMode[0] = cudaAddressModeMirror;
 	texFine.addressMode[1] = cudaAddressModeMirror;
-	texFine.filterMode = cudaFilterModeLinear;
+	texFine.filterMode = cudaFilterModePoint;
 	texFine.normalized = true;
 
 	cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();

@@ -340,6 +340,16 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 
 			// Warp frame 1
 			WarpImage(pI1[level], pW[level], pH[level], pS[level], d_u, d_v, d_i1warp);
+
+			//cv::Mat maskView = cv::Mat(cv::Size(pS[level], pH[level]), CV_32F);
+			//checkCudaErrors(cudaMemcpy((float *)maskView.ptr(), d_fnmask_l, pS[level] * pH[level] * sizeof(float), cudaMemcpyDeviceToHost));
+			////cv::Mat view;
+			////maskView.convertTo(view, CV_8UC1, 10.0f);
+			//cv::imshow("warped", maskView);
+			//checkCudaErrors(cudaMemcpy((float *)maskView.ptr(), d_ufn_l, pS[level] * pH[level] * sizeof(float), cudaMemcpyDeviceToHost));
+			//cv::imshow("orig", -maskView);
+			//cv::waitKey();
+
 			if ((method == METHODR_TVCHARBGRAD_MS) || (method == METHODR_TVCHARBGRAD_MS_FN)) {
 				WarpImage(pIx1[level], pW[level], pH[level], pS[level], d_u, d_v, d_ix1warp);
 				WarpImage(pIy1[level], pW[level], pH[level], pS[level], d_u, d_v, d_iy1warp);
@@ -442,7 +452,13 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 					lambdaf, alphaProj,
 					d_uproj, d_vproj);
 
-				for (int lidarLoop = 0; lidarLoop < 3; lidarLoop++) {
+				int lidarLoopMax;
+				if ((method == METHODR_TVL1_MS_FNSPARSE_LIDAR) || (method == METHODR_TVL1_MS_FN_LIDAR)) {
+					lidarLoopMax = 3;
+				}
+				else lidarLoopMax = 1;
+
+				for (int lidarLoop = 0; lidarLoop < lidarLoopMax; lidarLoop++) {
 					// Solve for X
 					if (false) { //no ms
 						Solve3dMinimalArea(d_uproj, d_vproj,
