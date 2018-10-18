@@ -53,15 +53,23 @@ __global__ void DownscaleNearestNeighborKernel(int width, int height, int stride
 
 	int pos = ix + iy * stride;
 
-	/*float up = tex2D(texFine, x - dx * 0.25f, y);
+	float up = tex2D(texFine, x - dx * 0.25f, y);
 	float down = tex2D(texFine, x + dx * 0.25f, y);
 	float left = tex2D(texFine, x, y - dy * 0.25f);
-	float right = tex2D(texFine, x, y + dy * 0.25f);*/
+	float right = tex2D(texFine, x, y + dy * 0.25f);
 	float here = tex2D(texFine, x, y);
 
 	//out[pos] = 0.5f * (here + 0.25f*up + 0.25f*down + 0.25f*left + 0.25f*right);
 	//if (up == 1.0f || down == 1.0f || left == 1.0f || right == 1.0f)
-	out[pos] = here;
+	if (here == 0.0f) {
+		if (up != 0.0f) out[pos] = up;
+		else if (down != 0.0f) out[pos] = down;
+		else if (left != 0.0f) out[pos] = left;
+		else if (right != 0.0f) out[pos] = right;
+		else out[pos] = here;
+	}
+	else
+		out[pos] = here;
 }
 
 __global__ void DownscaleMaskKernel(int width, int height, int stride, float *out)
@@ -90,7 +98,15 @@ __global__ void DownscaleMaskKernel(int width, int height, int stride, float *ou
 
 	//out[pos] = 0.5f * (here + 0.25f*up + 0.25f*down + 0.25f*left + 0.25f*right);
 	//if (up == 1.0f || down == 1.0f || left == 1.0f || right == 1.0f)
-	out[pos] = here;
+	if (here == 0.0f) {
+		if (up != 0.0f) out[pos] = up;
+		else if (down != 0.0f) out[pos] = down;
+		else if (left != 0.0f) out[pos] = left;
+		else if (right != 0.0f) out[pos] = right;
+		else out[pos] = here;
+	}
+	else
+		out[pos] = here;
 }
 
 __global__ void DownscaleScalingKernel(int width, int height, int stride, float scale, float *out)
@@ -111,9 +127,25 @@ __global__ void DownscaleScalingKernel(int width, int height, int stride, float 
 
 	int pos = ix + iy * stride;
 
-	out[pos] = scale * tex2D(texFine, x, y);
-	/*out[pos] = scale * 0.25f * (tex2D(texFine, x - dx * 0.25f, y) + tex2D(texFine, x + dx * 0.25f, y) +
-		tex2D(texFine, x, y - dy * 0.25f) + tex2D(texFine, x, y + dy * 0.25f));*/
+	//out[pos] = scale * tex2D(texFine, x, y);
+
+	float up = tex2D(texFine, x - dx * 0.25f, y);
+	float down = tex2D(texFine, x + dx * 0.25f, y);
+	float left = tex2D(texFine, x, y - dy * 0.25f);
+	float right = tex2D(texFine, x, y + dy * 0.25f);
+	float here = tex2D(texFine, x, y);
+
+	//out[pos] = 0.5f * (here + 0.25f*up + 0.25f*down + 0.25f*left + 0.25f*right);
+	//if (up == 1.0f || down == 1.0f || left == 1.0f || right == 1.0f)
+	if (here == 0.0f) {
+		if (up != 0.0f) out[pos] = scale * up;
+		else if (down != 0.0f) out[pos] = scale * down;
+		else if (left != 0.0f) out[pos] = scale * left;
+		else if (right != 0.0f) out[pos] = scale * right;
+		else out[pos] = scale * here;
+	}
+	else
+		out[pos] = scale * here;
 }
 
 void sor::CudaFlow::Downscale(const float *src, int width, int height, int stride,

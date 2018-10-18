@@ -105,7 +105,7 @@ void readDepthKitti(std::string filename, cv::Mat &depth, cv::Mat &mask) {
 }
 
 cv::Mat createFlownetMask(cv::Mat im) {
-	cv::Mat mask = cv::Mat::zeros(im.size(), CV_32F) + 0.01f;
+	cv::Mat mask = cv::Mat::zeros(im.size(), CV_32F);
 	int height = im.rows;
 	int width = im.cols;
 	int sparse = 4;
@@ -202,8 +202,8 @@ void depthToOpticalFlow(cv::Mat depth, cv::Mat depthMask, cv::Mat &u, cv::Mat &v
 				float Y2 = (float)R.at<double>(1, 0)*X + (float)R.at<double>(1, 1)*Y + (float)R.at<double>(1, 2)*Z + (float)t.at<double>(1);
 				float Z2 = (float)R.at<double>(2, 0)*X + (float)R.at<double>(2, 1)*Y + (float)R.at<double>(2, 2)*Z + (float)t.at<double>(2);
 
-				float xproj = focalX*X2 / Z2 + centerX;
-				float yproj = focalY*Y2 / Z2 + centerY;
+				float xproj = (float)focalX*X2 / Z2 + (float)centerX;
+				float yproj = (float)focalY*Y2 / Z2 + (float)centerY;
 
 				u.at<float>(j,i) = xproj - (float)i;
 				v.at<float>(j,i) = yproj - (float)j;
@@ -297,15 +297,21 @@ int getRtStereo(std::string filename, cv::Mat &R, cv::Mat &t) {
 }
 
 int test_lidarAsOpticalFlowPrior() {
+	bool useStereo = true;
+	bool useLidarAsOpticalFlow = true;
+
 	std::string itemNo = "0000000006";
+	std::string itemNo2 = "0000000005";
 	std::string mainfolder = "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/";
 	std::string im0filename = mainfolder + "image_02/data/" + itemNo + ".png";
-	std::string im1filename = mainfolder + "image_03/data/" + itemNo + ".png";
-	std::string flownetfilename = mainfolder + "flownet_stereo/" + itemNo + ".flo";
+	std::string im1filename = mainfolder + std::string((useStereo)? "image_03" : "image_02") + "/data/" 
+		+ std::string((useStereo) ? itemNo : itemNo2) + ".png";
+	std::string flownetfilename = mainfolder + std::string((useStereo) ? "flownet_stereo/" : "flownet_02/") + itemNo + ".flo";
 	std::string depthfilename = mainfolder + "proj_depth/velodyne_raw/image_02/" + itemNo + ".png";
 	std::string cameramatrix = "h:/data_kitti_raw/2011_09_26/2011_09_26_calib/2011_09_26/calib_cam_to_cam.txt";
 	std::string outputfilename = mainfolder + "output/output3d";
 	sor::ReconFlow *flow = new sor::ReconFlow(32, 12, 32);
+	
 
 	// Load Params
 	float lambda, tau, alphaTv, alphaFn, alphaProj, lambdaf, lambdams, lambdasp, scale;
@@ -314,7 +320,7 @@ int test_lidarAsOpticalFlowPrior() {
 	lambda = 50.0f;//50
 	tau = 0.125f;
 	alphaTv = 33.3f;//33.3f
-	alphaFn = 100.0f; //100
+	alphaFn = 10.0f; //100
 
 	alphaProj = 0.01f;//fix to 60 (slight effect) nice:2500.0f
 
@@ -406,8 +412,12 @@ int test_lidarAsOpticalFlowPrior() {
 
 	// Copy data to GPU
 	flow->copyImagesToDevice(i0rgbpad, i1rgbpad);
-	//flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1], createFlownetMask(flownet2[0])); //can set a mask as third argument
-	flow->copySparseOpticalFlowToDevice(uLidarpad, vLidarpad, depthMaskpad);
+
+	if (useLidarAsOpticalFlow)
+		flow->copySparseOpticalFlowToDevice(uLidarpad, vLidarpad, depthMaskpad);
+	else 
+		flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1], createFlownetMask(flownet2[0])); //can set a mask as third argument
+	
 	flow->copySparse3dToDevice(Xinpad, Yinpad, Zinpad, depthMaskpad);
 
 	// Calculate ReconFlow
@@ -453,8 +463,8 @@ int test_lidarAsOpticalFlowPrior() {
 	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
 
 	cv::imshow("Z", Zin);
-	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 15);
-	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Zin.png", Zin * 15);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 10);
+	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Zin.png", Zin * 10);
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/depthMask.png", depthMask);
 	cv::imshow("Zin", Z);
 	cv::imshow("flow", uvrgb);
