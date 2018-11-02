@@ -341,7 +341,7 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 			// Warp frame 1
 			WarpImage(pI1[level], pW[level], pH[level], pS[level], d_u, d_v, d_i1warp);
 
-			cv::Mat maskView = cv::Mat(cv::Size(pS[level], pH[level]), CV_32F);
+			/*cv::Mat maskView = cv::Mat(cv::Size(pS[level], pH[level]), CV_32F);
 			checkCudaErrors(cudaMemcpy((float *)maskView.ptr(), d_fnmask_l, pS[level] * pH[level] * sizeof(float), cudaMemcpyDeviceToHost));
 			cv::imshow("warped", maskView);
 
@@ -351,7 +351,7 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 			FlowToHSV(d_ufn_l, d_vfn_l, pW[level], pH[level], pS[level], flowViewRGB, flowScale * (float)pW[level] / (float)pW[0]);
 			checkCudaErrors(cudaMemcpy((float3 *)flowView.ptr(), flowViewRGB, pS[level] * pH[level] * sizeof(float) *3, cudaMemcpyDeviceToHost));
 			cv::imshow("orig", flowView);
-			cv::waitKey(1);
+			cv::waitKey(1);*/
 
 			if ((method == METHODR_TVCHARBGRAD_MS) || (method == METHODR_TVCHARBGRAD_MS_FN)) {
 				WarpImage(pIx1[level], pW[level], pH[level], pS[level], d_u, d_v, d_ix1warp);

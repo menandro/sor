@@ -196,6 +196,7 @@ namespace sor {
 		void CorrelationSearchSampling(int x, int y, float* searchSpace);
 		void GetValue(float *input, int idx, float &value);
 
+		// Image Properties
 		int width;
 		int height;
 		int stride;
@@ -204,6 +205,7 @@ namespace sor {
 		float flowScale;
 		bool withVisualization;
 
+		// Parameters
 		float lambda, lambdagrad, theta, tau;
 		int BlockWidth;
 		int BlockHeight;

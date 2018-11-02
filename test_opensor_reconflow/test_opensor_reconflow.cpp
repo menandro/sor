@@ -1164,10 +1164,10 @@ int test_main() {
 int main(int argc, char **argv)
 {
 	if (findCudaDevice(argc, (const char **)argv) == 0) {
-		test_lidarAsOpticalFlowPrior();
+		//test_lidarAsOpticalFlowPrior();
 		//test_sparseFlownet();
 		//test_sparseLidar();
-		//test_withoutFlownet();
+		test_withoutFlownet();
 		//test_twoFrameOpticalFlow();
 	}
 	return 0;
