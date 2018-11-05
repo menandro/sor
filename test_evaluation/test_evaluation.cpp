@@ -37,7 +37,7 @@ void getFilenames(Filenames *filenames, bool useStereo = true) {
 }
 
 // ************************************
-// DEFAULT and TESTED paramter settings
+// DEFAULT and TESTED parameter settings
 // ************************************
 void loadParameters(Parameters *params, std::string mode) {
 	if (!mode.compare("default")) {
@@ -94,7 +94,7 @@ int test_lidarAs3d() {
 	loadParameters(params, "default");
 
 	// Set camera matrices
-	cv::Mat R, t, K;
+	cv::Mat K;
 	CalibData *calibData = new CalibData();
 	readCalibKitti(filenames->cameramatrix, calibData);
 	K = calibData->k02;
@@ -139,6 +139,7 @@ int test_lidarAs3d() {
 	readDepthKitti(filenames->depthgroundtruth, depthGt, depthMaskGt);
 
 	// Solve pose from 3d-2d matches
+	cv::Mat R, t;
 	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
 	cv::Mat uLidar, vLidar, uLidarpad, vLidarpad;
 	depthToOpticalFlow(depth, depthMask, uLidar, vLidar, K, R, t);
