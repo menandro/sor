@@ -7,6 +7,7 @@
 #include <opensor_reconflow/Reconflow.h>
 #include <opencv2/optflow.hpp>
 #include <opensor_camerapose/CameraPose.h>
+#include <opensor_kitti/Kitti.h>
 #include "test_evaluation.h"
 #include <string>
 #include <vector>
@@ -22,7 +23,7 @@ void getFilenames(Filenames *filenames, bool useStereo = true) {
 	filenames->outputfilename = filenames->mainfolder + "output/output3d";
 
 	// Ground Truth files
-	filenames->depthgroundtruth = filenames->mainfolder + "proj_depth/velodyne_raw/image_02/" + filenames->itemNo0 + ".png";
+	filenames->depthgroundtruth = filenames->mainfolder + "proj_depth/groundtruth/image_02/" + filenames->itemNo0 + ".png";
 
 	// Do not touch these
 	filenames->im0filename = filenames->mainfolder + "image_02/data/" + filenames->itemNo0 + ".png";
@@ -30,8 +31,8 @@ void getFilenames(Filenames *filenames, bool useStereo = true) {
 		+ std::string((useStereo) ? filenames->itemNo0 : filenames->itemNo1) + ".png";
 	filenames->flownetfilename = filenames->mainfolder + std::string((useStereo) ? "flownet_stereo/" : "flownet_02/") 
 		+ filenames->itemNo0 + ".flo";
-	//filenames->depthfilename = filenames->mainfolder + "proj_depth/velodyne_raw/image_02/" + filenames->itemNo0 + ".png";
-	filenames->depthfilename = filenames->mainfolder + "proj_depth/groundtruth/image_02/" + filenames->itemNo0 + ".png";
+	filenames->depthfilename = filenames->mainfolder + "proj_depth/velodyne_raw/image_02/" + filenames->itemNo0 + ".png";
+	//filenames->depthfilename = filenames->mainfolder + "proj_depth/groundtruth/image_02/" + filenames->itemNo0 + ".png";
 	
 	filenames->outputerror = filenames->mainfolder + "output/" + filenames->itemNo0 + "err.png";
 }
@@ -79,7 +80,7 @@ void loadParameters(Parameters *params, std::string mode) {
 
 
 int test_lidarAs3d() {
-	bool useStereo = true;
+	bool useStereo = false;
 	bool useLidarAsOpticalFlow = true;
 	std::string suffixFor3D = "oursfn";
 
@@ -94,10 +95,14 @@ int test_lidarAs3d() {
 	loadParameters(params, "default");
 
 	// Set camera matrices
-	cv::Mat K;
-	CalibData *calibData = new CalibData();
-	readCalibKitti(filenames->cameramatrix, calibData);
-	K = calibData->k02;
+	Kitti *kitti = new Kitti();
+	cv::Mat K, K0, K1;
+	kitti->readCalib(filenames->cameramatrix);
+	K = kitti->calib->k02;
+	if (useStereo) {
+		K0 = kitti->calib->k02;
+		K1 = kitti->calib->k03;
+	}
 
 	// Check image size and compute pyramid nlevels
 	cv::Mat iset = cv::imread(filenames->im1filename);
@@ -131,22 +136,26 @@ int test_lidarAs3d() {
 
 	// Open initial 3D
 	cv::Mat depth, depthMask, Xin, Yin, Zin;
-	readDepthKitti(filenames->depthfilename, depth, depthMask);
+	kitti->readDepth(filenames->depthfilename, depth, depthMask);
 	depthTo3d(depth, depthMask, Xin, Yin, Zin, K);
 
 	// Open groundtruth 3D
 	cv::Mat depthGt, depthMaskGt;
-	readDepthKitti(filenames->depthgroundtruth, depthGt, depthMaskGt);
+	kitti->readDepth(filenames->depthgroundtruth, depthGt, depthMaskGt);
 
 	// Solve pose from 3d-2d matches
 	cv::Mat R, t;
-	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
-	cv::Mat uLidar, vLidar, uLidarpad, vLidarpad;
+	if (useStereo) kitti->useStereoPose0203(R, t);
+	else solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
+	
+	// Convert Depth to Optical Flow
+	cv::Mat uLidar, vLidar;
 	depthToOpticalFlow(depth, depthMask, uLidar, vLidar, K, R, t);
-	cv::copyMakeBorder(uLidar, uLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
-	cv::copyMakeBorder(vLidar, vLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
 
 	// Resize images by padding
+	cv::Mat uLidarpad, vLidarpad;
+	cv::copyMakeBorder(uLidar, uLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(vLidar, vLidarpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
 	cv::Mat Xinpad, Yinpad, Zinpad, depthMaskpad;
 	cv::Mat i1rgbpad, i0rgbpad, flownetpad;
 	cv::copyMakeBorder(i0rgb, i0rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
@@ -241,8 +250,10 @@ int test_lidarAs3d() {
 	cv::imshow("depthOut", depthOut8);
 	cv::imshow("depthGT", depthGt8);
 	cv::Mat error = cv::Mat::zeros(depthOut.size(), depthOut.type());
-	std::vector<float> errors = depthError(depthOut, depthGt, depthMaskGt, error);
-	cv::imshow("error", error);
+	std::vector<float> errors = kitti->depthError(depthOut, depthGt, depthMaskGt, error);
+	cv::Mat errorColor;
+	kitti->errorToColor(error, depthMaskGt, errorColor);
+	cv::imshow("error", errorColor);
 	cv::Mat errorRaw;// = cv::imread(filename, cv::IMREAD_UNCHANGED);
 	error.convertTo(errorRaw, CV_16U, 256.0);
 	imwrite(filenames->outputerror, errorRaw);
@@ -284,162 +295,6 @@ int main(int argc, char **argv)
 // ************************
 // Utilities
 // ************************
-std::vector<float> depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat depthMaskGt, cv::Mat &error) {
-	std::vector<float> errors(9, 0.f);
-	// check file size
-	if (depthGt.cols != depthOut.cols || depthGt.rows != depthOut.rows) {
-		std::cout << "ERROR: Wrong file size!" << std::endl;
-		throw 1;
-	}
-	int width = depthGt.cols;
-	int height = depthGt.rows;
-	
-	int num_pixels = 0;
-	int num_pixels_result = 0;
-
-	//log sum for scale invariant metric
-	float logSum = 0.0;
-
-	// for all pixels do
-	for (int j = 0; j < height; j++) {
-		for (int i = 0; i < width; i++) {
-			if (depthMaskGt.at<float>(j, i) == 1.0f) {
-				const float depth_ipol_m = depthOut.at<float>(j, i);
-				const float depth_gt_m = depthGt.at<float>(j, i);
-
-				//error if gt is valid
-				const float d_err = fabs(depth_gt_m - depth_ipol_m);
-				error.at<float>(j, i) = d_err;
-
-				const float d_err_squared = d_err * d_err;
-				const float d_err_inv = fabs(1.0f / depth_gt_m - 1.0f / depth_ipol_m);
-				const float d_err_inv_squared = d_err_inv * d_err_inv;
-				const float d_err_log = fabs(log(depth_gt_m) - log(depth_ipol_m));
-				const float d_err_log_squared = d_err_log * d_err_log;
-
-				//mae
-				errors[0] += d_err;
-				//rmse
-				errors[1] += d_err_squared;
-				//inv_mae
-				errors[2] += d_err_inv;
-				//inv_rmse
-				errors[3] += d_err_inv_squared;
-				//log
-				errors[4] += d_err_log;
-				//log rmse
-				errors[5] += d_err_log_squared;
-				//log diff for scale invariant metric
-				logSum += (log(depth_gt_m) - log(depth_ipol_m));
-				//abs relative
-				errors[7] += d_err / depth_gt_m;
-				//squared relative
-				errors[8] += d_err_squared / (depth_gt_m*depth_gt_m);
-
-				//increase valid gt pixels
-				num_pixels++;
-			}
-		}
-	}
-
-	//normalize mae
-	errors[0] /= (float)num_pixels;
-	//normalize and take sqrt for rmse
-	errors[1] /= (float)num_pixels;
-	errors[1] = sqrt(errors[1]);
-	//normalize inverse absoulte error
-	errors[2] /= (float)num_pixels;
-	//normalize and take sqrt for inverse rmse
-	errors[3] /= (float)num_pixels;
-	errors[3] = sqrt(errors[3]);
-	//normalize log mae
-	errors[4] /= (float)num_pixels;
-	//first normalize log rmse -> we need this result later
-	const float normalizedSquaredLog = errors[5] / (float)num_pixels;
-	errors[5] = sqrt(normalizedSquaredLog);
-	//calculate scale invariant metric
-	errors[6] = sqrt(normalizedSquaredLog - (logSum*logSum / ((float)num_pixels*(float)num_pixels)));
-	//normalize abs relative
-	errors[7] /= (float)num_pixels;
-	//normalize squared relative
-	errors[8] /= (float)num_pixels;
-
-	return errors;
-}
-
-void readCalibKitti(std::string filename, CalibData *calib) {
-	//read from file
-	std::fstream calibFile(filename, std::ios_base::in);
-	// Read calibTime;
-
-	std::string h;
-	calibFile >> h >> calib->date >> calib->time;
-	calibFile >> h >> calib->cornerDist;
-	for (int k = 0; k < 4; k++) {
-		std::string header;
-		double a, b, c, d, e, f, g, h, i;
-
-		calibFile >> header >> a >> b; //s
-		double smat[2] = { a, b };
-		calib->s[k] = cv::Mat(1, 2, CV_64F, smat).clone();
-
-		calibFile >> header >> a >> b >> c >> d >> e >> f >> g >> h >> i; //k
-		double kmat[9] = { a, b, c, d, e, f, g, h, i };
-		calib->k[k] = cv::Mat(3, 3, CV_64F, kmat).clone();
-
-		calibFile >> header >> a >> b >> c >> d >> e; //d
-		double dmat[5] = { a, b, c, d, e };
-		calib->d[k] = cv::Mat(1, 5, CV_64F, dmat).clone();
-
-		calibFile >> header >> a >> b >> c >> d >> e >> f >> g >> h >> i; //r
-		double rmat[9] = { a, b, c, d, e, f, g, h, i };
-		calib->r[k] = cv::Mat(3, 3, CV_64F, rmat).clone();
-
-		calibFile >> header >> a >> b >> c; //t
-		double tmat[5] = { a, b, c, d, e };
-		calib->t[k] = cv::Mat(3, 1, CV_64F, tmat).clone();
-
-		calibFile >> header >> a >> b; //srect
-		double srmat[2] = { a, b };
-		calib->sRect[k] = cv::Mat(1, 2, CV_64F, srmat).clone();
-
-		calibFile >> header >> a >> b >> c >> d >> e >> f >> g >> h >> i; //rrect
-		double rrmat[9] = { a, b, c, d, e, f, g, h, i };
-		calib->rRect[k] = cv::Mat(3, 3, CV_64F, rrmat).clone();
-
-		double m, n, o;
-		calibFile >> header >> a >> b >> c >> d >> e >> f >> g >> h >> i >> m >> n >> o; //prect
-		double prmat[12] = { a, b, c, d, e, f, g, h, i, m, n, o };
-		calib->pRect[k] = cv::Mat(3, 4, CV_64F, prmat).clone();
-
-		double k02mat[9] = { a, b, c, e, f, g, i, m, n };
-		calib->k02 = cv::Mat(3, 3, CV_64F, k02mat).clone();
-	}
-	std::cout << "K: " << calib->k02 << std::endl;
-	//std::cout << calib->k02.at<double>(0, 0) << " " << calib->k02.at<double>(0, 1) << " " << calib->k02.at<double>(0, 2) << std::endl;
-	//std::cout << calib->k02.at<double>(1, 0) << " " << calib->k02.at<double>(1, 1) << " " << calib->k02.at<double>(1, 2) << std::endl;
-	//std::cout << calib->k02.at<double>(2, 0) << " " << calib->k02.at<double>(2, 1) << " " << calib->k02.at<double>(2, 2) << std::endl;
-}
-
-void readDepthKitti(std::string filename, cv::Mat &depth, cv::Mat &mask) {
-	cv::Mat depthRaw = cv::imread(filename, cv::IMREAD_UNCHANGED);
-	depthRaw.convertTo(depth, CV_32F, 1 / 256.0);
-	//std::cout << depthRaw.at<unsigned short>(0, 0) << std::endl;
-	//std::cout << depth.at<float>(0, 0) << std::endl;
-
-	// Extract the mask
-	mask = cv::Mat::zeros(depthRaw.size(), CV_32F);
-	for (int j = 0; j < mask.rows; j++) {
-		for (int i = 0; i < mask.cols; i++) {
-			if (depth.at<float>(j, i) > 0.0f) {
-				mask.at<float>(j, i) = 1.0f;
-			}
-		}
-	}
-	//cv::imshow("mask", mask);
-	//cv::waitKey();
-}
-
 cv::Mat createFlownetMask(cv::Mat im) {
 	cv::Mat mask = cv::Mat::zeros(im.size(), CV_32F);
 	int height = im.rows;

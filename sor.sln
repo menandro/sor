@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opensor_camerapose", "opens
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_evaluation", "test_evaluation\test_evaluation.vcxproj", "{2F807189-5609-4011-8F40-354B40278BC9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opensor_kitti", "opensor_kitti\opensor_kitti.vcxproj", "{78A6BC07-1952-47E8-B98F-630C8641CF3E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{2F807189-5609-4011-8F40-354B40278BC9}.Release|x64.Build.0 = Release|x64
 		{2F807189-5609-4011-8F40-354B40278BC9}.Release|x86.ActiveCfg = Release|Win32
 		{2F807189-5609-4011-8F40-354B40278BC9}.Release|x86.Build.0 = Release|Win32
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Debug|x64.ActiveCfg = Debug|x64
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Debug|x64.Build.0 = Debug|x64
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Debug|x86.ActiveCfg = Debug|Win32
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Debug|x86.Build.0 = Debug|Win32
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Release|x64.ActiveCfg = Release|x64
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Release|x64.Build.0 = Release|x64
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Release|x86.ActiveCfg = Release|Win32
+		{78A6BC07-1952-47E8-B98F-630C8641CF3E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

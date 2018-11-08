@@ -36,29 +36,8 @@ public:
 	int nWarpIters, iters, minWidth;
 };
 
-class CalibData {
-public:
-	CalibData() {
-		s = std::vector<cv::Mat>(4);
-		k = std::vector<cv::Mat>(4);
-		d = std::vector<cv::Mat>(4);
-		r = std::vector<cv::Mat>(4);
-		t = std::vector<cv::Mat>(4);
-		sRect = std::vector<cv::Mat>(4);
-		rRect = std::vector<cv::Mat>(4);
-		pRect = std::vector<cv::Mat>(4);
-	};
-	std::string date, time;
-	float cornerDist;
-	std::vector<cv::Mat> s, k, d, r, t, sRect, rRect, pRect;
-	cv::Mat k02; //rectified camera matrix of image_02
-};
-
 void loadParameters(Parameters *params, std::string mode);
-std::vector<float> depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat depthMaskGt, cv::Mat &error);
 
-void readCalibKitti(std::string filename, CalibData *calib);
-void readDepthKitti(std::string filename, cv::Mat &depth, cv::Mat &mask);
 cv::Mat createFlownetMask(cv::Mat im);
 void depthTo3d(cv::Mat depth, cv::Mat depthMask, cv::Mat &Xin, cv::Mat &Yin, cv::Mat &Zin, cv::Mat K);
 void depthToOpticalFlow(cv::Mat depth, cv::Mat depthMask, cv::Mat &u, cv::Mat &v, cv::Mat K, cv::Mat R, cv::Mat t);
