@@ -155,9 +155,29 @@ void Kitti::readDepth(std::string filename, cv::Mat &depth, cv::Mat &mask) {
 	//std::cout << depthRaw.at<unsigned short>(0, 0) << std::endl;
 	//std::cout << depth.at<float>(0, 0) << std::endl;
 
-	// Extract the mask
+	// Extract the mask				
 	mask = cv::Mat::zeros(depthRaw.size(), CV_32F);
 	for (int j = 0; j < mask.rows; j++) {
+		for (int i = 0; i < mask.cols; i++) {
+			if (depth.at<float>(j, i) > 0.0f) {
+				mask.at<float>(j, i) = 1.0f;
+			}
+		}
+	}
+	//cv::imshow("mask", mask);
+	//cv::waitKey();
+}
+
+void Kitti::readDepthHalf(std::string filename, cv::Mat &depth, cv::Mat &mask) {
+	std::cout << "Reading half depth... " << std::endl;
+	cv::Mat depthRaw = cv::imread(filename, cv::IMREAD_UNCHANGED);
+	depthRaw.convertTo(depth, CV_32F, 1 / 256.0);
+	//std::cout << depthRaw.at<unsigned short>(0, 0) << std::endl;
+	//std::cout << depth.at<float>(0, 0) << std::endl;
+
+	// Extract the mask
+	mask = cv::Mat::zeros(depthRaw.size(), CV_32F);
+	for (int j = mask.rows / 2; j < mask.rows; j++) {
 		for (int i = 0; i < mask.cols; i++) {
 			if (depth.at<float>(j, i) > 0.0f) {
 				mask.at<float>(j, i) = 1.0f;
@@ -184,30 +204,33 @@ void Kitti::useStereoPose0203(cv::Mat &R, cv::Mat &t) {
 void Kitti::errorToColor(cv::Mat error, cv::Mat mask, cv::Mat &outputColor) {
 	int height = mask.rows;
 	int width = mask.cols;
+	float range[10] = { 0.0f, 0.1875f, 0.375f, 0.75f, 1.5f, 3.0f, 6.0f, 12.0f, 24.0f, 48.0f};
+	//float a = 0.1f;
+	//float range[10] = { 0.0f, a, a, a, a, a, a, a, a, a };
 
 	outputColor = cv::Mat::zeros(mask.size(), CV_8UC3);
 	for (int j = 0; j < height; j++) {
 		for (int i = 0; i < width; i++) {
 			if (mask.at<float>(j, i) == 1.0f) {
-				if ((error.at<float>(j, i) >= 0.0f) && (error.at<float>(j, i) < 0.1875f))
+				if ((error.at<float>(j, i) >= range[0]) && (error.at<float>(j, i) < range[1]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(149, 54, 49);
-				else if ((error.at<float>(j, i) >= 0.1875f) && (error.at<float>(j, i) < 0.375f))
+				else if ((error.at<float>(j, i) >= range[1]) && (error.at<float>(j, i) < range[2]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(180, 117, 69);
-				else if ((error.at<float>(j, i) >= 0.375f) && (error.at<float>(j, i) < 0.75f))
+				else if ((error.at<float>(j, i) >= range[2]) && (error.at<float>(j, i) < range[3]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(209, 173, 116);
-				else if ((error.at<float>(j, i) >= 0.75f) && (error.at<float>(j, i) < 1.5f))
+				else if ((error.at<float>(j, i) >= range[3]) && (error.at<float>(j, i) < range[4]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(233, 217, 171);
-				else if ((error.at<float>(j, i) >= 1.5f) && (error.at<float>(j, i) < 3.0f))
+				else if ((error.at<float>(j, i) >= range[4]) && (error.at<float>(j, i) < range[5]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(248, 243, 224);
-				else if ((error.at<float>(j, i) >= 3.0f) && (error.at<float>(j, i) < 6.0f))
+				else if ((error.at<float>(j, i) >= range[5]) && (error.at<float>(j, i) < range[6]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(144, 224, 254);
-				else if ((error.at<float>(j, i) >= 6.0f) && (error.at<float>(j, i) < 12.0f))
+				else if ((error.at<float>(j, i) >= range[6]) && (error.at<float>(j, i) < range[7]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(97, 174, 253);
-				else if ((error.at<float>(j, i) >= 12.0f) && (error.at<float>(j, i) < 24.0f))
+				else if ((error.at<float>(j, i) >= range[7]) && (error.at<float>(j, i) < range[8]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(67, 109, 244);
-				else if ((error.at<float>(j, i) >= 24.0f) && (error.at<float>(j, i) < 48.0f))
+				else if ((error.at<float>(j, i) >= range[8]) && (error.at<float>(j, i) < range[9]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(39, 48, 215);
-				else if ((error.at<float>(j, i) >= 48.0f))
+				else if ((error.at<float>(j, i) >= range[9]))
 					outputColor.at<cv::Vec3b>(j, i) = cv::Vec3b(38, 0, 165);
 			}
 		}
@@ -221,5 +244,4 @@ void Kitti::errorToColor(cv::Mat error, cv::Mat mask, cv::Mat &outputColor) {
 		cv::Point(dilation_size, dilation_size));
 	/// Apply the dilation operation
 	cv::dilate(outputColor, outputColor, element);
-	//imshow("Dilation Demo", dilation_dst);
 }

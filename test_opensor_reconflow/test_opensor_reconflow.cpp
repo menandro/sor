@@ -296,6 +296,14 @@ int getRtStereo(std::string filename, cv::Mat &R, cv::Mat &t) {
 	return 0;
 }
 
+int getRtStereo(cv::Mat &R, cv::Mat &t) {
+	double Re[9] = { 1,0,0,0,1,0,0,0,1 };
+	double te[3] = { -1, 0.00001, 0.00001 };
+	R = cv::Mat(3, 3, CV_64F, Re).clone();
+	t = cv::Mat(3, 1, CV_64F, te).clone();
+	return 0;
+}
+
 int test_lidarAsOpticalFlowPrior() {
 	bool useStereo = true;
 	bool useLidarAsOpticalFlow = true;
@@ -1033,6 +1041,167 @@ int test_twoFrameOpticalFlow() {
 	return 0;
 }
 
+int test_namita() {
+
+	std::string mainfolder = "h:/data_namita/";
+	std::string im0filename = mainfolder + "image_02x/test352.png";
+	std::string im1filename = mainfolder + "image_02x/test351.png";
+	std::string flownetfilename = mainfolder + "flownetx/test352.flo";
+	std::string outputfilename = mainfolder + "output/output3d";
+	sor::ReconFlow *flow = new sor::ReconFlow(32, 12, 32);
+	flow->allocTest();
+
+	// Load Params
+	float lambda, tau, alphaTv, alphaFn, alphaProj, lambdaf, lambdams, scale;
+	int nWarpIters, iters, minWidth;
+	std::string suffixFor3D = "oursfn";
+	lambda = 50.0f;//50
+	tau = 0.125f;
+	alphaTv = 33.3f;
+	alphaFn = 10.0f; //100
+
+	alphaProj = 0.01f;//fix to 60 (slight effect)
+
+	lambdaf = 0.0001f;//0.1 (Fdata)
+	lambdams = 0.005f;//100 (Fms)
+
+	nWarpIters = 1;
+	iters = 1000;
+	scale = 2.0f;
+	minWidth = 256;
+
+	// Check image size and compute pyramid nlevels
+	//std::string initialImage = mainfolder + im1filename;
+	cv::Mat iset = cv::imread(im0filename);
+	int width = iset.cols;
+	int height = iset.rows;
+	int nLevels = 1;
+	int pHeight = (int)((float)height / scale);
+	while (pHeight > minWidth) {
+		nLevels++;
+		pHeight = (int)((float)pHeight / scale);
+	}
+	std::cout << "Pyramid Levels: " << nLevels << std::endl;
+	int stride = flow->iAlignUp(width);
+	std::cout << "Height: " << height << std::endl;
+	std::cout << "Width: " << width << std::endl;
+	cv::Mat isetpad;
+	cv::copyMakeBorder(iset, isetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+
+	// Initialize handler matrices for display and output
+	cv::Mat uvrgb = cv::Mat(isetpad.size(), CV_32FC3);
+	cv::Mat u = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat v = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat X = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat Y = cv::Mat(isetpad.size(), CV_32F);
+	cv::Mat Z = cv::Mat(isetpad.size(), CV_32F);
+
+	// Open input images
+	cv::Mat i0rgb, i1rgb, flownet, i1rgbpad, i0rgbpad, flownetpad;
+	i0rgb = cv::imread(im0filename);
+	i1rgb = cv::imread(im1filename);
+
+	// Solve relative pose
+	cv::Mat R, t, K;
+	int isSetPose = getRtStereo(R, t);
+	//CalibData *calibData = new CalibData();
+	//readCalibKitti(cameramatrix, calibData);
+	//K = calibData->k02;
+	double Ksub[9] = { 256, 0, 256, 0, 256, 256, 0, 0, 1 };
+	K = cv::Mat(3, 3, CV_64F, Ksub).clone();
+	std::cout << "K: " << K << std::endl;
+
+	/*int minHessian = 200;
+	sor::CameraPose *camerapose = new sor::CameraPose();
+	camerapose->initialize(K, minHessian);
+	if (!camerapose->solvePose_8uc3(i0rgb, i1rgb, R, t)) {
+		if (!camerapose->filtered_keypoints_im1.empty()) {
+			drawKeypoints(i0rgb, camerapose->filtered_keypoints_im1, i0rgb, cv::Scalar(0, 255, 0), cv::DrawMatchesFlags::DEFAULT);
+		}
+	}
+	else std::cerr << "Failed to solve for relative pose. " << std::endl;*/
+	t = t / 5.0;
+
+	cv::imshow("rgb", i0rgb);
+	std::cout << "Rrel: " << R << std::endl;
+	std::cout << "trel: " << t << std::endl;
+
+	// Initialize ReconFlow
+	flow->initializeR(width, height, 3, nLevels, scale, sor::ReconFlow::METHODR_TVL1_MS_FNSPARSE,
+		lambda, 0.0f, lambdaf, lambdams,
+		alphaTv, alphaProj, alphaFn,
+		tau, nWarpIters, iters);
+	flow->setCameraMatrices(K, K);
+
+	// Open initial matching (flownet)
+
+	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	if (flownet.empty()) {
+		std::cerr << "Flownet file not found." << std::endl;
+		return 0;
+	}
+
+	// Resize images by padding
+	cv::copyMakeBorder(i0rgb, i0rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(i1rgb, i1rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(flownet, flownetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::Mat flownet2[2];   //split flownet channels
+	cv::split(flownetpad, flownet2);
+
+	// Copy data to GPU
+	flow->copyImagesToDevice(i0rgbpad, i1rgbpad);
+	flow->copySparseOpticalFlowToDevice(flownet2[0], flownet2[1]);// , createFlownetMask(flownet2[0])); //can set a mask as third argument
+
+																								   // Calculate ReconFlow
+	flow->solveR(R, t, 10.0f); //main computation iteration
+
+								// Copy GPU results to CPU
+	flow->copyOpticalFlowToHost(u, v, uvrgb); //uvrgb is an optical flow image
+	flow->copy3dToHost(X, Y, Z); //3D points
+
+								 // Save output 3D as ply file
+	std::vector<cv::Vec3b> colorbuffer(stride*height);
+	cv::Mat colorMat = cv::Mat(static_cast<int>(colorbuffer.size()), 1, CV_8UC3, &colorbuffer[0]);
+	std::vector<cv::Vec3f> buffer(stride*height);
+	cv::Mat cloudMat = cv::Mat(static_cast<int>(buffer.size()), 1, CV_32FC3, &buffer[0]);
+	colorbuffer.clear();
+	buffer.clear();
+
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < stride; i++) {
+			cv::Vec3b rgb = i0rgbpad.at<cv::Vec3b>(j, i);
+			colorbuffer.push_back(rgb);
+
+			float x = X.at<float>(j, i);
+			float y = Y.at<float>(j, i);
+			float z = Z.at<float>(j, i);
+			if (((z <= 75) && (z > 10)) && ((x <= 75) && (y > -75)) && ((y <= 75) && (y > -75))) {
+				buffer.push_back(cv::Vec3f(x, -y, -z));
+			}
+			else {
+				x = std::numeric_limits<float>::quiet_NaN();
+				y = std::numeric_limits<float>::quiet_NaN();
+				z = std::numeric_limits<float>::quiet_NaN();
+				buffer.push_back(cv::Vec3f(x, y, z));
+			}
+		}
+	}
+	cv::viz::WCloud cloud(cloudMat, colorMat);
+
+	std::ostringstream output3d;
+	output3d << outputfilename << suffixFor3D << ".ply";
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+
+	cv::Mat Zout;
+	Z.convertTo(Zout, CV_8UC1);
+	cv::imwrite(mainfolder + "output/depth.png", Zout);
+	cv::imshow("z", Zout);
+
+	cv::imshow("flow", uvrgb);
+	cv::waitKey();
+	return 0;
+}
+
 int test_main() {
 	std::string mainfolder = "";
 	std::string im1filename = "data/im319.png";
@@ -1167,7 +1336,8 @@ int main(int argc, char **argv)
 		//test_lidarAsOpticalFlowPrior();
 		//test_sparseFlownet();
 		//test_sparseLidar();
-		test_withoutFlownet();
+		//test_withoutFlownet();
+		test_namita();
 		//test_twoFrameOpticalFlow();
 	}
 	return 0;

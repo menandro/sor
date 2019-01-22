@@ -24,8 +24,15 @@ public:
 	std::string flownetfilename;
 	std::string depthfilename;
 	std::string cameramatrix;
+	
+	//For when K and Rt are on different files (like IVDATA)
+	std::string cameraIntrinsic;
+	std::string cameraExtrinsic;
+	std::string cameraAlignment; //MLP
+
 	std::string outputfilename;
 	std::string outputerror;
+	std::string outputdepth;
 	
 	std::string depthgroundtruth;
 };

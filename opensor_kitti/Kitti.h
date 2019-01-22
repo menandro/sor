@@ -42,6 +42,7 @@ public:
 
 	void readCalib(std::string filename);
 	void readDepth(std::string filename, cv::Mat &depth, cv::Mat &mask);
+	void readDepthHalf(std::string filename, cv::Mat &depth, cv::Mat &mask);
 	std::vector<float> depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat depthMaskGt, cv::Mat &error);
 	void useStereoPose0203(cv::Mat &R, cv::Mat &t);
 	void errorToColor(cv::Mat error, cv::Mat mask, cv::Mat &outputColor);

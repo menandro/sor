@@ -348,7 +348,7 @@ int sor::ReconFlow::solveReconFlow(cv::Mat rot0, cv::Mat tr0, cv::Mat rot1, cv::
 			cv::Mat flowView = cv::Mat(cv::Size(pS[level], pH[level]), CV_32FC3);
 			float3 *flowViewRGB;
 			checkCudaErrors(cudaMalloc(&flowViewRGB, dataSize32fc3));
-			FlowToHSV(d_ufn_l, d_vfn_l, pW[level], pH[level], pS[level], flowViewRGB, flowScale * (float)pW[level] / (float)pW[0]);
+			FlowToHSV(d_u, d_v, pW[level], pH[level], pS[level], flowViewRGB, flowScale * (float)pW[level] / (float)pW[0]);
 			checkCudaErrors(cudaMemcpy((float3 *)flowView.ptr(), flowViewRGB, pS[level] * pH[level] * sizeof(float) *3, cudaMemcpyDeviceToHost));
 			cv::imshow("orig", flowView);
 			cv::waitKey(1);*/
