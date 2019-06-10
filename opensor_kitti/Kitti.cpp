@@ -1,7 +1,91 @@
 #include "Kitti.h"
 
+std::vector<float> Kitti::depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat depthMaskGt, float maxDepth, cv::Mat &error) {
+	std::vector<float> errors(9, 0.0f);
+	// check file size
+	if (depthGt.cols != depthOut.cols || depthGt.rows != depthOut.rows) {
+		std::cout << "ERROR: Wrong file size!" << std::endl;
+		throw 1;
+	}
+	int width = depthGt.cols;
+	int height = depthGt.rows;
+
+	int num_pixels = 0;
+	int num_pixels_result = 0;
+
+	//log sum for scale invariant metric
+	float logSum = 0.0;
+
+	// for all pixels do
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < width; i++) {
+			if ((depthMaskGt.at<float>(j, i) == 1.0f) && (depthGt.at<float>(j,i) < maxDepth)) {
+				const float depth_ipol_m = depthOut.at<float>(j, i);
+				const float depth_gt_m = depthGt.at<float>(j, i);
+
+				//error if gt is valid
+				const float d_err = fabs(depth_gt_m - depth_ipol_m);
+				error.at<float>(j, i) = d_err;
+
+				const float d_err_squared = d_err * d_err;
+				const float d_err_inv = fabs(1.0f / depth_gt_m - 1.0f / depth_ipol_m);
+				const float d_err_inv_squared = d_err_inv * d_err_inv;
+				const float d_err_log = fabs(log(depth_gt_m) - log(depth_ipol_m));
+				const float d_err_log_squared = d_err_log * d_err_log;
+
+				//mae
+				errors[0] += d_err;
+				//rmse
+				errors[1] += d_err_squared;
+				//inv_mae
+				errors[2] += d_err_inv;
+				//inv_rmse
+				errors[3] += d_err_inv_squared;
+				//log
+				errors[4] += d_err_log;
+				//log rmse
+				errors[5] += d_err_log_squared;
+				//log diff for scale invariant metric
+				logSum += (log(depth_gt_m) - log(depth_ipol_m));
+				//abs relative
+				errors[7] += d_err / depth_gt_m;
+				//squared relative
+				errors[8] += d_err_squared / (depth_gt_m*depth_gt_m);
+
+				//increase valid gt pixels
+				num_pixels++;
+			}
+		}
+	}
+
+	//normalize mae
+	std::cout << "total mae: " << errors[0] << " total pix: " << num_pixels << std::endl;
+	errors[0] /= (float)num_pixels;
+	//normalize and take sqrt for rmse
+	errors[1] /= (float)num_pixels;
+	errors[1] = sqrt(errors[1]);
+	//normalize inverse absoulte error
+	errors[2] /= (float)num_pixels;
+	//normalize and take sqrt for inverse rmse
+	errors[3] /= (float)num_pixels;
+	errors[3] = sqrt(errors[3]);
+	//normalize log mae
+	errors[4] /= (float)num_pixels;
+	//first normalize log rmse -> we need this result later
+	const float normalizedSquaredLog = errors[5] / (float)num_pixels;
+	errors[5] = sqrt(normalizedSquaredLog);
+	//calculate scale invariant metric
+	errors[6] = sqrt(normalizedSquaredLog - (logSum*logSum / ((float)num_pixels*(float)num_pixels)));
+	//normalize abs relative
+	errors[7] /= (float)num_pixels;
+	//normalize squared relative
+	errors[8] /= (float)num_pixels;
+
+	return errors;
+}
+
 std::vector<float> Kitti::depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat depthMaskGt, cv::Mat &error) {
-	std::vector<float> errors(9, 0.f);
+	std::vector<float> errors(9, 0.0f);
 	// check file size
 	if (depthGt.cols != depthOut.cols || depthGt.rows != depthOut.rows) {
 		std::cout << "ERROR: Wrong file size!" << std::endl;
@@ -59,6 +143,7 @@ std::vector<float> Kitti::depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat 
 	}
 
 	//normalize mae
+	std::cout << "total mae: " << errors[0] << " total pix: " << num_pixels << std::endl;
 	errors[0] /= (float)num_pixels;
 	//normalize and take sqrt for rmse
 	errors[1] /= (float)num_pixels;
@@ -156,14 +241,17 @@ void Kitti::readDepth(std::string filename, cv::Mat &depth, cv::Mat &mask) {
 	//std::cout << depth.at<float>(0, 0) << std::endl;
 
 	// Extract the mask				
+	int num_pixels = 0;
 	mask = cv::Mat::zeros(depthRaw.size(), CV_32F);
 	for (int j = 0; j < mask.rows; j++) {
 		for (int i = 0; i < mask.cols; i++) {
 			if (depth.at<float>(j, i) > 0.0f) {
 				mask.at<float>(j, i) = 1.0f;
+				num_pixels++;
 			}
 		}
 	}
+	//std::cout << "Total lidar points: " << num_pixels << std::endl;
 	//cv::imshow("mask", mask);
 	//cv::waitKey();
 }
@@ -197,8 +285,8 @@ void Kitti::useStereoPose0203(cv::Mat &R, cv::Mat &t) {
 	double baseline32 = baseline30 - baseline20; // +383/721
 	double tvec[3] = { -baseline32, 0.000001, 0.000001 };
 	t = cv::Mat(3, 1, CV_64F, tvec).clone();
-	std::cout << "Rstereo: " << R << std::endl;
-	std::cout << "tstereo: " << t << std::endl;
+	//std::cout << "Rstereo: " << R << std::endl;
+	//std::cout << "tstereo: " << t << std::endl;
 }
 
 void Kitti::errorToColor(cv::Mat error, cv::Mat mask, cv::Mat &outputColor) {
