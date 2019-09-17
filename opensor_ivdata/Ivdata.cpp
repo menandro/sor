@@ -57,7 +57,7 @@ int Ivdata::readDepth(std::string filename, cv::Mat &depth, cv::Mat &mask) {
 	mask = cv::Mat::zeros(depthRaw.size(), CV_32F);
 	for (int j = 0; j < mask.rows; j++) {
 		for (int i = 0; i < mask.cols; i++) {
-			if (depth.at<float>(j, i) > 5.0f) {
+			if (depth.at<float>(j, i) > 0.5f) {
 				mask.at<float>(j, i) = 1.0f;
 			}
 		}

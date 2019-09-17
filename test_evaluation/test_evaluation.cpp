@@ -72,8 +72,8 @@ void getIvdataFilenames(Filenames *filenames, std::string item) { // monocular s
 	filenames->itemNo0 = item;
 	filenames->itemNo1 = filenames->itemNo0;
 	filenames->cameraAlignment = "h:/data_ivdata/000-001.mlp";
-	filenames->mainfolder = "h:/data_ivdata/";
-	filenames->cameraIntrinsic = "h:/data_ivdata/calib_intrinsic.txt";
+	filenames->mainfolder = "h:/data_icra_pers/";
+	filenames->cameraIntrinsic = "h:/data_icra_pers/calib_intrinsic.txt";
 	
 	// Output files
 	filenames->outputfilename = filenames->mainfolder + "output/output3d";
@@ -212,6 +212,81 @@ void loadParameters(Parameters *params, std::string mode) {
 	}
 }
 
+int get_ivdata_pose_only(std::string item, cv::Mat &KK, cv::Mat &RR, cv::Mat &tt) {
+	bool useLidarAsOpticalFlow = false;
+	std::string suffixFor3D = "default";
+	// Load Params
+	Parameters *params = new Parameters();
+	loadParameters(params, "kitti_nolidar");
+
+	Filenames *filenames = new Filenames();
+	getIvdataFilenames(filenames, item);
+
+	// Set camera matrices
+	Ivdata* ivdata = new Ivdata();
+	cv::Mat K, R, t;
+	//ivdata->readMLP(filenames->cameraAlignment, R, t); //NOT REALLY WORKING
+	ivdata->readIntrinsic(filenames->cameraIntrinsic, K);
+
+	// Main reconstruction pointer
+	sor::ReconFlow *flow = new sor::ReconFlow(32, 12, 32);
+
+	// Check image size and compute pyramid nlevels
+	cv::Mat iset = cv::imread(filenames->im1filename);
+	int width = iset.cols;
+	int height = iset.rows;
+	int nLevels = 1;
+	int pHeight = (int)((float)height / params->scale);
+	while (pHeight > params->minWidth) {
+		nLevels++;
+		pHeight = (int)((float)pHeight / params->scale);
+	}
+	std::cout << "Pyramid Levels: " << nLevels << std::endl;
+	int stride = flow->iAlignUp(width);
+	std::cout << "Stride: " << stride << std::endl;
+	std::cout << "Width: " << width << std::endl;
+	cv::Mat isetpad;
+	cv::copyMakeBorder(iset, isetpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+
+	// Open input images
+	cv::Mat i0rgb, i1rgb, flownet;
+	i0rgb = cv::imread(filenames->im0filename);
+	i1rgb = cv::imread(filenames->im1filename);
+
+	// Open initial matching (flownet)
+	flownet = cv::optflow::readOpticalFlow(filenames->flownetfilename);
+	if (flownet.empty()) {
+		std::cerr << "Flownet file not found." << std::endl;
+		return 0;
+	}
+	else std::cout << "Flownet found." << std::endl;
+
+	// Open initial 3D
+	cv::Mat depth, depthMask, Xin, Yin, Zin;
+	//ivdata->readDepth(filenames->depthfilename, depth, depthMask);
+	//std::cout << filenames->depthfilename << std::endl;
+	//depthTo3d(depth, depthMask, Xin, Yin, Zin, K);
+	//cv::imshow("Depth mask", i0rgb);
+	//cv::waitKey();
+
+	// Open groundtruth 3D
+	cv::Mat depthGt, depthMaskGt;
+	ivdata->readDepth(filenames->depthgroundtruth, depthGt, depthMaskGt);
+	depthTo3d(depthGt, depthMaskGt, Xin, Yin, Zin, K);
+	//cv::imshow("Depth GT mask", depthMaskGt);
+	cv::imshow("Depth mask", Zin);
+	cv::waitKey(1);
+	std::cout << K << std::endl;
+
+	// Solve pose from 3d-2d matches
+	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMaskGt, flownet, K, R, t);
+	RR = R.clone();
+	tt = t.clone();
+	KK = K.clone();
+
+	return 0;
+}
+
 int test_ivdata_sequence(std::string item) {
 	bool useLidarAsOpticalFlow = false;
 	std::string suffixFor3D = "default";
@@ -274,6 +349,9 @@ int test_ivdata_sequence(std::string item) {
 
 	// Solve pose from 3d-2d matches
 	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
+	std::cout << "K: " << K << std::endl;
+	std::cout << "R: " << R << std::endl;
+	std::cout << "t: " << t << std::endl;
 
 	// Convert Depth to Optical Flow
 	cv::Mat uLidar, vLidar;
@@ -1155,14 +1233,24 @@ int evaluate_upsampling() {
 int main(int argc, char **argv)
 {
 	if (findCudaDevice(argc, (const char **)argv) == 0) {
-		/*for (int k = 45; k <= 56; k++) {
+		for (int k = 57; k <= 80; k++) {
 			std::string item = "im" + std::to_string(k);
-			test_ivdata_sequence(item);
-		}*/
+			cv::Mat K, R, t;
+			get_ivdata_pose_only(item, K, R, t);
+
+			cv::FileStorage file("im" + std::to_string(k) + ".xml", cv::FileStorage::WRITE);
+
+			// Write to file!
+			file << "K" << K;
+			file << "R" << R;
+			file << "t" << t;
+
+			file.release();
+		}
 		//test_kitti_sequence();
 
 		//evaluate_upsampling();
-		evaluate_upsampling_faro();
+		//evaluate_upsampling_faro();
 
 		//test_ivdata();
 		//test_kitti();
@@ -1244,11 +1332,11 @@ void depthTo3d(cv::Mat depth, cv::Mat depthMask, cv::Mat &Xin, cv::Mat &Yin, cv:
 		}
 	}
 	//cv::viz::WCloud cloud(cloudMat, colorMat);
-	cv::viz::WCloud cloud(cloudMat);
+	/*cv::viz::WCloud cloud(cloudMat);
 
 	std::ostringstream output3d;
 	output3d << "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/lidar3d.ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat);*/
 
 	//cv::imshow("tst", Yin);
 	//cv::waitKey();
@@ -1328,6 +1416,7 @@ int solve2d3dPose(cv::Mat im, cv::Mat Xin, cv::Mat Yin, cv::Mat Zin, cv::Mat dep
 	cv::Mat distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
 
 	cv::Mat rvec, tvec;
+	std::cout << points3d.size() << " " << points2d.size() << std::endl;
 	cv::solvePnPRansac(points3d, points2d, K, distCoeffs, rvec, t);
 	cv::Rodrigues(rvec, R);
 	std::cout << "rvec: " << R << std::endl;
