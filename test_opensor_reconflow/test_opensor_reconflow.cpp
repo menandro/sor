@@ -171,11 +171,11 @@ void depthTo3d(cv::Mat depth, cv::Mat depthMask, cv::Mat &Xin, cv::Mat &Yin, cv:
 		}
 	}
 	//cv::viz::WCloud cloud(cloudMat, colorMat);
-	cv::viz::WCloud cloud(cloudMat);
+	/*cv::viz::WCloud cloud(cloudMat);
 
 	std::ostringstream output3d;
 	output3d << "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/lidar3d.ply";	
-	cv::viz::writeCloud(output3d.str(), cloudMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat);*/
 
 	//cv::imshow("tst", Yin);
 	//cv::waitKey();
@@ -382,7 +382,7 @@ int test_lidarAsOpticalFlowPrior() {
 	i1rgb = cv::imread(im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	flownet = cv::readOpticalFlow(flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -463,12 +463,12 @@ int test_lidarAsOpticalFlowPrior() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	std::cout << outputfilename << suffixFor3D << ".ply";
 	output3d << outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	cv::imshow("Z", Zin);
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 10);
@@ -552,7 +552,7 @@ int test_sparseFlownet() {
 	i1rgb = cv::imread(im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	flownet = cv::readOpticalFlow(flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -629,12 +629,12 @@ int test_sparseFlownet() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	std::cout << outputfilename << suffixFor3D << ".ply";
 	output3d << outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	cv::imshow("Z", Zin);
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 15);
@@ -717,7 +717,7 @@ int test_sparseLidar() {
 	i1rgb = cv::imread(im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	flownet = cv::readOpticalFlow(flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -803,12 +803,12 @@ int test_sparseLidar() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	std::cout << outputfilename << suffixFor3D << ".ply";
 	output3d << outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	cv::imshow("Z", Zin);
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z*15);
@@ -911,7 +911,7 @@ int test_withoutFlownet() {
 	flow->setCameraMatrices(K, K);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	flownet = cv::readOpticalFlow(flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -962,11 +962,11 @@ int test_withoutFlownet() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	output3d << outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	cv::imshow("flow", uvrgb);
 	cv::waitKey();
@@ -1024,7 +1024,7 @@ int test_twoFrameOpticalFlow() {
 	channelForward.push_back(v);
 	cv::Mat forward;
 	cv::merge(channelForward, forward);
-	cv::optflow::writeOpticalFlow("frame10.flo", forward);
+	cv::writeOpticalFlow("frame10.flo", forward);
 	cv::imshow("output", uvrgb);
 	uvrgb = uvrgb * 256;
 	cv::Mat displayout;
@@ -1135,7 +1135,7 @@ int test_namita() {
 
 	// Open initial matching (flownet)
 
-	flownet = cv::optflow::readOpticalFlow(flownetfilename);
+	flownet = cv::readOpticalFlow(flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -1186,11 +1186,11 @@ int test_namita() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	output3d << outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	cv::Mat Zout;
 	Z.convertTo(Zout, CV_8UC1);
@@ -1271,7 +1271,7 @@ int test_main() {
 	i1rgb = cv::imread(image2filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(flownet2filename);
+	flownet = cv::readOpticalFlow(flownet2filename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -1322,22 +1322,93 @@ int test_main() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	output3d << outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
+	return 0;
+}
+
+int test_rover() {
+	// INPUTS
+	int width = 1242;
+	int height = 375;
+	cv::Mat i0rgb = cv::imread("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/image_02/data/0000000006.png");
+	cv::Mat i1rgb = cv::imread("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/image_02/data/0000000005.png");
+	
+	std::string depthfilename = "h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/proj_depth/velodyne_raw/image_02/0000000006.png";
+	cv::Mat depth, depthMask, Xin, Yin, Zin;
+	readDepthKitti(depthfilename, depth, depthMask);
+
+	std::string cameramatrix = "h:/data_kitti_raw/2011_09_26/2011_09_26_calib/2011_09_26/calib_cam_to_cam.txt";
+	CalibData *calibData = new CalibData();
+	readCalibKitti(cameramatrix, calibData);
+	cv::Mat K = calibData->k02;
+	depthTo3d(depth, depthMask, Xin, Yin, Zin, K);
+	// INPUTS
+
+	// Optical Flow Prior
+	sor::CudaFlow *flow = new sor::CudaFlow();
+	int stride = flow->iAlignUp(width);
+	flow->initialize(width, height, 3, 5, 2.0f, sor::CudaFlow::METHOD_TVL1,
+		50.0f, 200.0f, 0.33f, 0.125f, 1, 500);
+	cv::Mat i0rgbpad, i1rgbpad;
+	cv::Mat uvrgb = cv::Mat(cv::Size(stride, height), CV_32FC3);
+	cv::Mat u = cv::Mat(cv::Size(stride, height), CV_32F);
+	cv::Mat v = cv::Mat(cv::Size(stride, height), CV_32F);
+	cv::copyMakeBorder(i0rgb, i0rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(i1rgb, i1rgbpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	flow->copyToDevice(i0rgbpad, i1rgbpad);
+	flow->solveOpticalFlow(50.0f);
+	flow->copyToHost(u, v, uvrgb); // Output U,V
+	cv::imshow("flow", uvrgb);
+	std::vector<cv::Mat> channelForward;
+	channelForward.push_back(u);
+	channelForward.push_back(v);
+	cv::Mat flownet;
+	cv::merge(channelForward, flownet);
+
+	// Motion Stereo
+	bool useStereo = false;
+	sor::ReconFlow *motionStereo = new sor::ReconFlow(32, 12, 32);
+	motionStereo->initializeR(width, height, 3, 4, 2.0f, sor::ReconFlow::METHODR_TVL1_MS_FNSPARSE_LIDAR,
+		50.0f, 0.0f, 0.0001f, 50.0f, 0.1f, 33.3f, 0.01f, 0.5f, 0.125f, 1, 1000);
+	cv::Mat R, t;
+	motionStereo->setCameraMatrices(K, K);
+	cv::Mat X = cv::Mat(cv::Size(stride, height), CV_32F);
+	cv::Mat Y = cv::Mat(cv::Size(stride, height), CV_32F);
+	cv::Mat Z = cv::Mat(cv::Size(stride, height), CV_32F);
+
+	cv::Mat Xinpad, Yinpad, Zinpad, depthMaskpad;
+	cv::copyMakeBorder(Xin, Xinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Yin, Yinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(Zin, Zinpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	cv::copyMakeBorder(depthMask, depthMaskpad, 0, 0, 0, stride - width, cv::BORDER_CONSTANT, 0);
+	solve2d3dPose(i1rgb, Xin, Yin, Zin, depthMask, flownet, K, R, t);
+
+	motionStereo->copyImagesToDevice(i0rgbpad, i1rgbpad);
+	motionStereo->copySparseOpticalFlowToDevice(u, v, depthMaskpad);
+	motionStereo->copySparse3dToDevice(Xinpad, Yinpad, Zinpad, depthMaskpad);
+	motionStereo->solveR(R, t, 100.0f);
+	motionStereo->copyOpticalFlowToHost(u, v, uvrgb); //uvrgb is an optical flow image
+	motionStereo->copy3dToHost(X, Y, Z); //3D points
+	cv::Mat Z8;
+	Z.convertTo(Z8, CV_8UC1, 256.0/40);
+	cv::imshow("Z", Z8);
+	cv::waitKey();
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
 	if (findCudaDevice(argc, (const char **)argv) == 0) {
+		test_rover();
 		//test_lidarAsOpticalFlowPrior();
 		//test_sparseFlownet();
 		//test_sparseLidar();
 		//test_withoutFlownet();
-		test_namita();
+		//test_namita();
 		//test_twoFrameOpticalFlow();
 	}
 	return 0;

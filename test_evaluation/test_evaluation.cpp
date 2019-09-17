@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <opensor_reconflow/Reconflow.h>
-#include <opencv2/optflow.hpp>
+//#include <opencv2/optflow.hpp>
 #include <opensor_camerapose/CameraPose.h>
 #include <opensor_ivdata/Ivdata.h>
 #include <opensor_kitti/Kitti.h>
@@ -254,7 +254,7 @@ int get_ivdata_pose_only(std::string item, cv::Mat &KK, cv::Mat &RR, cv::Mat &tt
 	i1rgb = cv::imread(filenames->im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(filenames->flownetfilename);
+	flownet = cv::readOpticalFlow(filenames->flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -329,7 +329,7 @@ int test_ivdata_sequence(std::string item) {
 	i1rgb = cv::imread(filenames->im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(filenames->flownetfilename);
+	flownet = cv::readOpticalFlow(filenames->flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -432,12 +432,12 @@ int test_ivdata_sequence(std::string item) {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	std::cout << filenames->outputfilename << suffixFor3D << ".ply" << std::endl;
 	output3d << filenames->outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	//cv::imshow("Z", Z);
 	cv::Mat depth16;
@@ -538,7 +538,7 @@ int test_ivdata() {
 	i1rgb = cv::imread(filenames->im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(filenames->flownetfilename);
+	flownet = cv::readOpticalFlow(filenames->flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -638,12 +638,12 @@ int test_ivdata() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
 	std::ostringstream output3d;
 	std::cout << filenames->outputfilename << suffixFor3D << ".ply" << std::endl;
 	output3d << filenames->outputfilename << suffixFor3D << ".ply";
-	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);
+	cv::viz::writeCloud(output3d.str(), cloudMat, colorMat);*/
 
 	//cv::imshow("Z", Z);
 	cv::Mat depth16;
@@ -771,7 +771,7 @@ int test_kitti_sequence() {
 		i1rgb = cv::imread(filenames->im1filename);
 
 		// Open initial matching (flownet)
-		flownet = cv::optflow::readOpticalFlow(filenames->flownetfilename);
+		flownet = cv::readOpticalFlow(filenames->flownetfilename);
 
 		// Open initial 3D
 		cv::Mat depth, depthMask, Xin, Yin, Zin;
@@ -855,8 +855,8 @@ int test_kitti_sequence() {
 				}
 			}
 		}
-		cv::viz::WCloud cloud(cloudMat, colorMat);
-		cv::viz::writeCloud(filenames->outputfilename, cloudMat, colorMat);
+		/*cv::viz::WCloud cloud(cloudMat, colorMat);
+		cv::viz::writeCloud(filenames->outputfilename, cloudMat, colorMat);*/
 
 		//cv::imshow("Z", Z);
 		cv::Mat depth16;
@@ -961,7 +961,7 @@ int test_kitti() {
 	i1rgb = cv::imread(filenames->im1filename);
 
 	// Open initial matching (flownet)
-	flownet = cv::optflow::readOpticalFlow(filenames->flownetfilename);
+	flownet = cv::readOpticalFlow(filenames->flownetfilename);
 	if (flownet.empty()) {
 		std::cerr << "Flownet file not found." << std::endl;
 		return 0;
@@ -1062,9 +1062,9 @@ int test_kitti() {
 			}
 		}
 	}
-	cv::viz::WCloud cloud(cloudMat, colorMat);
+	/*cv::viz::WCloud cloud(cloudMat, colorMat);
 
-	cv::viz::writeCloud(filenames->outputfilename, cloudMat, colorMat);
+	cv::viz::writeCloud(filenames->outputfilename, cloudMat, colorMat);*/
 
 	//cv::imshow("Z", Z);
 	cv::Mat depth16;

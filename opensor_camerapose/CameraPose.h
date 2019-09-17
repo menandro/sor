@@ -45,7 +45,7 @@ namespace sor {
 		cv::Mat pose;
 
 		int minHessian = 1000;
-		cv::cuda::SURF_CUDA surf;
+		//cv::cuda::SURF_CUDA surf;
 
 		cv::Ptr< cv::cuda::DescriptorMatcher > matcher;
 		std::vector< std::vector< cv::DMatch> > matches;

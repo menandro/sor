@@ -107,7 +107,7 @@ int sor::CudaFlow::_solveCorrPatchMatch_cpu(const char *picName, const char *flo
 	channelForward.push_back(v);
 	cv::Mat forward;
 	cv::merge(channelForward, forward);
-	cv::optflow::writeOpticalFlow(flowName, forward);
+	cv::writeOpticalFlow(flowName, forward);
 	return 0;
 }
 
