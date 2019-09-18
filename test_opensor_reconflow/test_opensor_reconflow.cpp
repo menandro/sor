@@ -474,7 +474,9 @@ int test_lidarAsOpticalFlowPrior() {
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Z.png", Z * 10);
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/Zin.png", Zin * 10);
 	cv::imwrite("h:/data_kitti_raw/2011_09_26/2011_09_26_drive_0093_sync/output/depthMask.png", depthMask);
-	cv::imshow("Zin", Z);
+	cv::Mat Z8;
+	Z.convertTo(Z8, CV_8UC1, 256.0 / 40);
+	cv::imshow("Zin", Z8);
 	cv::imshow("flow", uvrgb);
 	cv::waitKey();
 	return 0;
@@ -1373,7 +1375,7 @@ int test_rover() {
 	bool useStereo = false;
 	sor::ReconFlow *motionStereo = new sor::ReconFlow(32, 12, 32);
 	motionStereo->initializeR(width, height, 3, 4, 2.0f, sor::ReconFlow::METHODR_TVL1_MS_FNSPARSE_LIDAR,
-		50.0f, 0.0f, 0.0001f, 50.0f, 0.1f, 33.3f, 0.01f, 0.5f, 0.125f, 1, 1000);
+		50.0f, 0.0f, 0.0001f, 0.1f, 0.1f, 33.3f, 0.01f, 0.5f, 0.125f, 1, 200);
 	cv::Mat R, t;
 	motionStereo->setCameraMatrices(K, K);
 	cv::Mat X = cv::Mat(cv::Size(stride, height), CV_32F);
