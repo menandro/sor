@@ -409,11 +409,13 @@ int sor::CudaFlow::copyToDevice(cv::Mat i0, cv::Mat i1) {
 		checkCudaErrors(cudaMemcpy(d_i08uc3, (uchar3 *)i0.ptr(), dataSize8uc3, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemcpy(d_i18uc3, (uchar3 *)i1.ptr(), dataSize8uc3, cudaMemcpyHostToDevice));
 	}
+	return 0;
 }
 int sor::CudaFlow::copyToHost(cv::Mat &u, cv::Mat &v, cv::Mat &uvrgb) {
 	checkCudaErrors(cudaMemcpy((float3 *)uvrgb.ptr(), d_uvrgb, stride * height * sizeof(float) * 3, cudaMemcpyDeviceToHost));
 	checkCudaErrors(cudaMemcpy((float *)u.ptr(), d_u, stride * height * sizeof(float), cudaMemcpyDeviceToHost));
 	checkCudaErrors(cudaMemcpy((float *)v.ptr(), d_v, stride * height * sizeof(float), cudaMemcpyDeviceToHost));
+	return 0;
 }
 
 

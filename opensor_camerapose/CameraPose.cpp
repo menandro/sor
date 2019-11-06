@@ -16,18 +16,21 @@ int sor::CameraPose::initialize(cv::Mat intrinsic, int minHessian) {
 	surf.hessianThreshold = minHessian;
 	matcher = cv::cuda::DescriptorMatcher::createBFMatcher();
 	return 0;*/
+	return 0;
 }
 
 int sor::CameraPose::initialize(cv::Mat intrinsic) {
 	/*minHessian = 2000;
 	this->initialize(intrinsic, minHessian);
 	return 0;*/
+	return 0;
 }
 
 int sor::CameraPose::initialize(double focal, cv::Point2d pp) {
 	/*minHessian = 2000;
 	this->initialize(focal, pp, minHessian);
 	return 0;*/
+	return 0;
 }
 
 int sor::CameraPose::initialize(double focal, cv::Point2d pp, int minHessian) {
@@ -35,6 +38,7 @@ int sor::CameraPose::initialize(double focal, cv::Point2d pp, int minHessian) {
 	intrinsic = cv::Mat(3, 3, CV_64F, k);
 	this->initialize(intrinsic, minHessian);
 	return 0;*/
+	return 0;
 }
 
 int sor::CameraPose::initialize(double focalx, double focaly, cv::Point2d pp, int minHessian) {
@@ -42,6 +46,7 @@ int sor::CameraPose::initialize(double focalx, double focaly, cv::Point2d pp, in
 	intrinsic = cv::Mat(3, 3, CV_64F, k);
 	this->initialize(intrinsic, minHessian);
 	return 0;*/
+	return 0;
 }
 
 int sor::CameraPose::solvePose_8uc1(cv::Mat im1, cv::Mat im2, cv::Mat &R, cv::Mat &t) {
@@ -115,6 +120,7 @@ int sor::CameraPose::solvePose_8uc1(cv::Mat im1, cv::Mat im2, cv::Mat &R, cv::Ma
 	//		return 1;
 	//	}
 	//}
+	return 0;
 }
 
 int sor::CameraPose::solvePose_8uc3(cv::Mat im1, cv::Mat im2, cv::Mat &R, cv::Mat &t) {
@@ -125,4 +131,5 @@ int sor::CameraPose::solvePose_8uc3(cv::Mat im1, cv::Mat im2, cv::Mat &R, cv::Ma
 	if (!this->solvePose_8uc1(im1gray, im2gray, R, t))
 		return 0;
 	else return 1;*/
+	return 0;
 }
