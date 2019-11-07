@@ -1233,7 +1233,7 @@ int evaluate_upsampling() {
 int main(int argc, char **argv)
 {
 	if (findCudaDevice(argc, (const char **)argv) == 0) {
-		for (int k = 105; k <= 144; k++) {
+		for (int k = 145; k <= 224; k++) {
 			std::string item = "im" + std::to_string(k);
 			cv::Mat K, R, t;
 			get_ivdata_pose_only(item, K, R, t);
