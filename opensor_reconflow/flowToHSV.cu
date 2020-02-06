@@ -204,10 +204,10 @@ __global__ void ComputeColorKernel(float *u, float *v, int width, int height, in
 		int ncols = 55;
 		float rad = sqrtf(du * du + dv * dv);
 		float a = atan2(-dv, -du) / 3.14159f;
-		float fk = (a + 1) / 2 * ((float)ncols - 1) + 1;
+		float fk = (a + 1) / 2 * ((float)ncols - 1);
 		int k0 = floorf(fk); //colorwheel index lower bound
 		int k1 = k0 + 1; //colorwheel index upper bound
-		if (k1 == ncols + 1) {
+		if (k1 == ncols) {
 			k1 = 1;
 		}
 		float f = fk - (float)k0;

@@ -1135,6 +1135,7 @@ int evaluate_upsampling_faro() {
 
 		int frame = frameName[k];
 		std::string depthFilename = mainfolder + method + "upsampling_eachterm/" + filler + std::to_string(frame) + ".png";
+		//std::string depthFilename = "H:/data_iros2019_open/results_ours/with_gt_semantic/optimization/im12.png";
 		std::string errorFilename = mainfolder + method + "upsampling_eachterm/err" + filler + std::to_string(frame);
 
 		//std::string depthFilename = "H:/data_ivdata/output_nodirection/upsampling/im" + std::to_string(frame) + "p.png";
@@ -1233,24 +1234,24 @@ int evaluate_upsampling() {
 int main(int argc, char **argv)
 {
 	if (findCudaDevice(argc, (const char **)argv) == 0) {
-		for (int k = 145; k <= 224; k++) {
-			std::string item = "im" + std::to_string(k);
-			cv::Mat K, R, t;
-			get_ivdata_pose_only(item, K, R, t);
+		//for (int k = 145; k <= 224; k++) {
+		//	std::string item = "im" + std::to_string(k);
+		//	cv::Mat K, R, t;
+		//	get_ivdata_pose_only(item, K, R, t);
 
-			cv::FileStorage file("im" + std::to_string(k) + ".xml", cv::FileStorage::WRITE);
+		//	cv::FileStorage file("im" + std::to_string(k) + ".xml", cv::FileStorage::WRITE);
 
-			// Write to file!
-			file << "K" << K;
-			file << "R" << R;
-			file << "t" << t;
+		//	// Write to file!
+		//	file << "K" << K;
+		//	file << "R" << R;
+		//	file << "t" << t;
 
-			file.release();
-		}
+		//	file.release();
+		//}
 		//test_kitti_sequence();
 
 		//evaluate_upsampling();
-		//evaluate_upsampling_faro();
+		evaluate_upsampling_faro();
 
 		//test_ivdata();
 		//test_kitti();
