@@ -1140,7 +1140,7 @@ int evaluate_upsampling_faro() {
 		//std::string depthFilename = "H:/data_iros2019_open/results_ours/with_gt_semantic/optimization/im12.png";
 		//std::string errorFilename = mainfolder + method + "upsampling_eachterm/err" + filler + std::to_string(frame);
 
-		std::string depthFilename = "H:/data_ivdata/output/upsampling_iros2020/im" + std::to_string(frame) + "new_opt_multilayer.png";
+		std::string depthFilename = "H:/data_ivdata/output/upsampling_iros2020/im" + std::to_string(frame) + "new_opt100_multilayer.png";
 		std::string errorFilename = "H:/data_ivdata/output/errors_gtsem/error_ours_iros2020/im" + std::to_string(frame);
 
 		//std::string depthFilename = "H:/data_ivdata/output_chen/upsampling/im" + std::to_string(frame) + "p.png";

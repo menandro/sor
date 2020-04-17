@@ -19,7 +19,9 @@ std::vector<float> Kitti::depthError(cv::Mat depthOut, cv::Mat depthGt, cv::Mat 
 	// for all pixels do
 	for (int j = 0; j < height; j++) {
 		for (int i = 0; i < width; i++) {
-			if ((depthMaskGt.at<float>(j, i) == 1.0f) && (depthGt.at<float>(j,i) < maxDepth)) {
+			//if ((depthMaskGt.at<float>(j, i) == 1.0f) && (depthGt.at<float>(j,i) < maxDepth)) {
+			if ((depthMaskGt.at<float>(j, i) == 1.0f) && (depthGt.at<float>(j, i) < maxDepth) 
+				&& (depthOut.at<float>(j, i) < maxDepth)) {
 				const float depth_ipol_m = depthOut.at<float>(j, i);
 				const float depth_gt_m = depthGt.at<float>(j, i);
 
